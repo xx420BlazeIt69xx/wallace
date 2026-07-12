@@ -88,4 +88,8 @@
 
 &mtp_hid {
 	status = "okay";
+
+	multi-touch {
+		firmware-name = "apple/tpmtfw-j614s.bin";
+	};
 };

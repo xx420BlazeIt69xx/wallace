@@ -7,13 +7,18 @@ cable; reboot via `macvdmtool`. No screen-reading or physical access needed.
 Operational details, recipes, and history: `DEVLOG.md`. Long-term: `roadmap.md`.
 Read the DebugUSB link rules in DEVLOG before touching the rig.
 
-## 1. Trackpad interface start (confirmed broken)
-`event0` is Apple DockChannel Multi-touch and `event1` is the keyboard. A swipe
-test fails even immediately after a fresh boot: the first event0 open sends two
-command-0x40 resets, firmware returns `0xe00002c2`, and `dchid_open()` times out;
-the next open returns `-EINPROGRESS` because `iface->starting` stays set. Fix the
-DockChannel HID start/error-recovery path, then retest motion events. No tactile
-click is expected yet (the haptic actuator is a separate interface).
+## 1. Provision and test the J614s trackpad firmware
+`event0` is Apple DockChannel Multi-touch and `event1` is the keyboard. The
+transport's missing firmware loader and stuck-start error path are fixed and
+live-tested in kernel build #12: repeated opens now independently request
+`apple/tpmtfw-j614s.bin` and return `-ENOENT`, with no invalid resets or stale
+`-EINPROGRESS`. Extract the paired HIDF blob from this machine's macOS firmware
+with `asahi-fwextract`, rebuild the initramfs with
+`TRACKPAD_FIRMWARE=/path/to/tpmtfw-j614s.bin`, and retest motion. If MTP then
+requests its reset GPIO, derive that SMC/GPIO mapping from the J614s ADT before
+implementing the separately gated proxy path. No tactile click is expected yet
+(the haptic actuator is a separate interface). Full finding:
+`done/2026-07-12-t6040-trackpad-firmware.md`.
 
 ## 2. Upstream-shape the proven full-PMGR policy
 The full 214-domain topology now boots to BusyBox **3/3** with the exact minimal

@@ -18,8 +18,9 @@ long-term plan in `roadmap.md`; per-session write-ups in `done/`.
 
 Active: full PMGR topology boots reproducibly with the exact minimal raw-boot
 policy; only its upstream shape remains (see PMGR section).
-Trackpad interface start is confirmed broken. Parked: USB gadget console (EP0
-dies post-enumeration; `done/2026-07-11-t6040-usb-gadget-plan.md`).
+Trackpad firmware loading is implemented; provisioning the paired J614s blob is
+next. Parked: USB gadget console (EP0 dies post-enumeration;
+`done/2026-07-11-t6040-usb-gadget-plan.md`).
 
 ## Operating the rig
 
@@ -146,6 +147,24 @@ not-empty first per pair, the binding wants ascending;
 (c) dockchannel-hid lacked hid_ll_driver `.stop` → NULL-deref oops
 (`patches/t6040-dockchannel-fixes.patch`). Full story:
 `done/2026-07-11-t6040-mtp-wake-findings.md`.
+
+### Trackpad firmware path (2026-07-12, session 5)
+
+The upstream-oriented DockChannel transport is deliberately keyboard-only: it
+omitted the older Asahi driver's external firmware upload, while M2-and-newer
+multi-touch requires a board-paired blob produced by `asahi-fwextract`.
+`patches/t6040-dockchannel-trackpad-fw.patch` restores the bounded HIDF loader,
+runtime interface-number patch, coherent-DMA upload, post-upload reset, and
+retry-safe error cleanup. J614s DT names `apple/tpmtfw-j614s.bin` (Linux commit
+`6399cdc1bb94`).
+
+Kernel build #12 (`Image` SHA-256 `93c33ea10dddcc69b50c39a7c0b64a7a8d9c5485bfcc94119839ed4501fdadfb`)
+booted to BusyBox. Two event0 opens independently returned `-ENOENT` for the
+missing blob; neither sent command `0x40`, timed out, nor left `starting` stuck.
+Use `TRACKPAD_FIRMWARE=... scripts/t6040-make-initramfs.sh` after extracting the
+paired file. GPIO proxying remains intentionally absent until any request and
+its J614s ADT mapping are captured and reviewed. Details:
+`done/2026-07-12-t6040-trackpad-firmware.md`.
 
 ### DockChannel-UART Linux console (2026-07-12)
 Kernel side: `origin/dockchannel` mailbox + tty drivers + a t6040 board DT

@@ -39,7 +39,7 @@ fixed, dapf gate + watchdog arm added for M4.
 | Works | Not yet |
 |---|---|
 | BusyBox userspace on mainline+3 patches, reproducible | Full-pmgr upstream policy (exact minimal workaround proven; NEXT_STEPS #2) |
-| Internal keyboard at the shell; trackpad registers | Trackpad interface start; maxcpus>1, idle states (WFI state-loss on M4) |
+| Internal keyboard at the shell; trackpad registers + firmware loader | Paired trackpad blob/GPIO proxy; maxcpus>1, idle states (WFI state-loss on M4) |
 | Two-way Linux shell + m1n1 proxy over one DebugUSB cable; remote reboot | `console=ttydc0` printk (tty driver registers no console yet) |
 | Linux apple_wdt; fbcon early console | NVMe rootfs (needs pmgr → dart → ans2) |
 | Kernel build env (podman, arm64-native) with patch pipeline | USB gadget console (parked: EP0 dies post-enumeration) |
@@ -181,7 +181,9 @@ maxcpus>1 + cpufreq DT wiring.
   the USB-gadget console m1n1 already proves works.
 - **Internal keyboard + trackpad:** ✅ **keyboard DONE early (2026-07-11)** via
   dockchannel-HID (three bugs fixed — see DEVLOG); trackpad registers as
-  input0, but its interface reset/start currently fails (NEXT_STEPS #1).
+  input0. Its missing HIDF loader and retry recovery are fixed; provision the
+  paired `tpmtfw-j614s.bin`, then determine whether J614s needs the legacy GPIO
+  proxy path (NEXT_STEPS #1).
 - **Display:** two steps.
   1. `simpledrm` on the m1n1-provided framebuffer — works immediately, no
      driver; gives a desktop-capable (unaccelerated) console. This alone plus

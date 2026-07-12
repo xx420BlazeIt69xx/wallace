@@ -144,6 +144,20 @@ if [ "${DOCKCHANNEL:-0}" = "1" ]; then
         git apply --check /out/t6040-dockchannel-fixes.patch || true
         exit 1
     fi
+    # The upstream-oriented transport is keyboard-only. Restore the bounded
+    # HIDF firmware upload used by multi-touch; the board DT supplies the
+    # paired, extracted firmware filename.
+    if grep -q 'DCHID_FW_MAGIC' \
+        drivers/hid/apple-dockchannel-hid/apple_dockchannel_hid.c; then
+        echo "t6040-dockchannel-trackpad-fw.patch already applied"
+    elif git apply --check /out/t6040-dockchannel-trackpad-fw.patch 2>/dev/null; then
+        git apply /out/t6040-dockchannel-trackpad-fw.patch
+        echo "t6040-dockchannel-trackpad-fw.patch applied OK"
+    else
+        echo "ERROR: t6040-dockchannel-trackpad-fw.patch does not apply cleanly:"
+        git apply --check /out/t6040-dockchannel-trackpad-fw.patch || true
+        exit 1
+    fi
 fi
 
 echo "== verify netfilter case-collision is healed in the clone =="

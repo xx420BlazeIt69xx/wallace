@@ -1,0 +1,225 @@
+HID: apple-dockchannel-hid: restore multitouch firmware loading
+
+The upstream-oriented DockChannel transport currently initializes the internal
+keyboard but omits the firmware upload needed by the multi-touch interface.
+Port the bounded firmware path from the older Asahi driver to the mailbox-based
+transport:
+
+- read the board-specific firmware-name from the interface child node;
+- validate the HIDF wrapper emitted by asahi-fwextract;
+- patch the runtime interface number;
+- upload the payload through the existing coherent MTP DMA domain;
+- reset the interface only after a successful upload; and
+- clear the starting state on command errors and timeouts so open can retry.
+
+This does not add the separate GPIO proxy path. Machines whose MTP firmware
+requests a host-controlled reset GPIO will still need that mapping described
+and implemented separately.
+
+--- a/drivers/hid/apple-dockchannel-hid/apple_dockchannel_hid.c
++++ b/drivers/hid/apple-dockchannel-hid/apple_dockchannel_hid.c
+@@ -10,6 +10,7 @@
+ #include <linux/delay.h>
+ #include <linux/device.h>
+ #include <linux/dma-mapping.h>
++#include <linux/firmware.h>
+ #include <linux/hid.h>
+ #include <linux/mailbox/apple-dockchannel.h>
+ #include <linux/mailbox_client.h>
+@@ -82,6 +83,7 @@ struct dchid_init_hdr {
+ 
+ #define CMD_RESET_INTERFACE	0x40
+ #define CMD_RESET_INTERFACE_SUB	1
++#define CMD_SEND_FIRMWARE	0x95
+ #define CMD_ENABLE_INTERFACE	0xb4
+ 
+ struct dchid_init_block_hdr {
+@@ -103,6 +105,17 @@ struct dchid_stm_id {
+ 	u8 serial_length;
+ } __packed;
+ 
++#define DCHID_FW_MAGIC	0x46444948
++#define DCHID_FW_VERSION	1
++
++struct dchid_fw_header {
++	__le32 magic;
++	__le32 version;
++	__le32 header_length;
++	__le32 data_length;
++	__le32 iface_offset;
++} __packed;
++
+ struct dchid_work {
+ 	struct work_struct work;
+ 	struct dchid_iface *iface;
+@@ -422,18 +435,142 @@ static int dchid_reset_interface(struct dchid_iface *iface, int state)
+ 	return dchid_comm_cmd(iface->dchid, cmd, sizeof(cmd));
+ }
+ 
++static int dchid_send_firmware(struct dchid_iface *iface, const void *firmware,
++			       size_t size)
++{
++	struct {
++		u8 cmd;
++		u8 unk1;
++		u8 unk2;
++		u8 iface;
++		__le64 addr;
++		__le32 size;
++	} __packed cmd = {
++		.cmd = CMD_SEND_FIRMWARE,
++		.unk1 = 2,
++		.iface = iface->index,
++	};
++	struct device *dev = iface->dchid->dev;
++	dma_addr_t addr;
++	void *buf;
++
++	if (size > U32_MAX)
++		return -EFBIG;
++
++	buf = dmam_alloc_coherent(dev, size, &addr, GFP_KERNEL);
++	if (!buf)
++		return -ENOMEM;
++
++	memcpy(buf, firmware, size);
++	dma_wmb();
++	cmd.addr = cpu_to_le64(addr);
++	cmd.size = cpu_to_le32(size);
++
++	return dchid_comm_cmd(iface->dchid, &cmd, sizeof(cmd));
++}
++
++static int dchid_get_firmware(struct dchid_iface *iface, void **firmware,
++			      size_t *size)
++{
++	struct device *dev = iface->dchid->dev;
++	const struct dchid_fw_header *hdr;
++	const struct firmware *fw;
++	const char *fw_name;
++	size_t header_length, data_length, iface_offset;
++	u8 *fw_data;
++	int ret;
++
++	ret = fwnode_property_read_string(iface->fwnode, "firmware-name",
++					  &fw_name);
++	if (ret) {
++		*firmware = NULL;
++		*size = 0;
++		return 0;
++	}
++
++	ret = request_firmware(&fw, fw_name, dev);
++	if (ret)
++		return dev_err_probe(dev, ret, "failed to load %s\n", fw_name);
++
++	if (fw->size < sizeof(*hdr)) {
++		ret = -EINVAL;
++		goto invalid;
++	}
++
++	hdr = (const struct dchid_fw_header *)fw->data;
++	header_length = le32_to_cpu(hdr->header_length);
++	data_length = le32_to_cpu(hdr->data_length);
++	iface_offset = le32_to_cpu(hdr->iface_offset);
++
++	if (le32_to_cpu(hdr->magic) != DCHID_FW_MAGIC ||
++	    le32_to_cpu(hdr->version) != DCHID_FW_VERSION ||
++	    header_length < sizeof(*hdr) || header_length > fw->size ||
++	    data_length > fw->size - header_length ||
++	    iface_offset >= data_length) {
++		ret = -EINVAL;
++		goto invalid;
++	}
++
++	fw_data = devm_kmemdup(dev, fw->data + header_length, data_length,
++				GFP_KERNEL);
++	if (!fw_data) {
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	if (iface_offset)
++		fw_data[iface_offset] = iface->index;
++
++	*firmware = fw_data;
++	*size = data_length;
++	ret = 0;
++	goto out;
++
++invalid:
++	dev_err(dev, "%s has an invalid DockChannel firmware header\n", fw_name);
++out:
++	release_firmware(fw);
++	return ret;
++}
++
+ static int dchid_start_interface(struct dchid_iface *iface)
+ {
++	void *firmware;
++	size_t size;
++	int ret;
++
+ 	if (iface->starting)
+ 		return -EINPROGRESS;
+ 
+ 	dev_dbg(iface->dchid->dev, "starting interface %s\n", iface->name);
+ 
+ 	iface->starting = true;
+-	dchid_reset_interface(iface, 0);
+-	dchid_reset_interface(iface, 2);
++	ret = dchid_get_firmware(iface, &firmware, &size);
++	if (ret < 0)
++		goto err;
++
++	/* Only multi-touch interfaces currently carry external firmware. */
++	if (firmware && size) {
++		dev_info(iface->dchid->dev, "sending firmware for %s\n",
++			 iface->name);
++		ret = dchid_send_firmware(iface, firmware, size);
++		if (ret < 0)
++			goto err;
++
++		ret = dchid_reset_interface(iface, 0);
++		if (ret < 0)
++			goto err;
++
++		ret = dchid_reset_interface(iface, 2);
++		if (ret < 0)
++			goto err;
++	}
+ 
+ 	return 0;
++
++err:
++	iface->starting = false;
++	return ret;
+ }
+ 
+ static int dchid_start(struct hid_device *hdev)
+@@ -459,7 +596,8 @@ static int dchid_open(struct hid_device *hdev)
+ 		if (!wait_for_completion_timeout(&iface->ready,
+ 						 msecs_to_jiffies(START_TIMEOUT_MS))) {
+ 			dev_err(iface->dchid->dev, "iface %s start timed out\n",
+ 				iface->name);
++			iface->starting = false;
+ 			return -ETIMEDOUT;
+ 		}
+ 	}
+@@ -612,6 +724,7 @@ static void dchid_handle_ready(struct dchid_dev *dchid, void *data, size_t length)
+ 		return;
+ 
+ 	dev_dbg(dchid->dev, "interface %s is now ready\n", iface->name);
++	iface->starting = false;
+ 	complete_all(&iface->ready);
+ 
+ 	if (!strcmp(iface->name, "stm")) {
+@@ -1071,7 +1209,8 @@ static struct platform_driver dchid_platform_driver = {
+ };
+ module_platform_driver(dchid_platform_driver);
+ 
++MODULE_FIRMWARE("apple/tpmtfw-*.bin");
+ MODULE_DESCRIPTION("Apple DockChannel HID transport driver");
+ MODULE_AUTHOR("Hector Martin <marcan@marcan.st>");
+ MODULE_AUTHOR("Michael Reeves <michael.reeves077@gmail.com>");
+ MODULE_LICENSE("Dual MIT/GPL");
