@@ -21,7 +21,7 @@ No tactile click is expected yet (the haptic actuator is a separate interface).
 Full finding:
 `done/2026-07-12-t6040-trackpad-firmware.md`.
 
-## 2. Upstream-shape the proven full-PMGR policy
+## 2. Review and upstream the proven T6041 PMGR quirk
 The full 214-domain topology now boots to BusyBox **3/3** with the exact minimal
 temporary policy: preserve firmware-active domains, disable only `disp_cpu`,
 and skip auto-enable only on `dispext0_cpu` and `dispext1_cpu`. Both CPU skips
@@ -29,12 +29,15 @@ are individually necessary at bank granularity; the `sys`, `fe`, and five old
 ANE exclusions are unnecessary. Legacy raw fails 3/3. Full matrix and hashes:
 `done/2026-07-12-t6040-pmgr-matrix.md`.
 
+The supported shape is now implemented and live-tested in build #14:
+`patches/t6040-pmgr-t6041-quirks.patch` selects preserve-active and the two CPU
+auto-enable exceptions from `apple,t6041-pmgr-pwrstate`; Linux `37339d595765`
+removes the experiment-only properties from the standard DT. Review/clean the
+draft for upstream, but no further policy bisection is needed.
+
 Next, in leverage order:
-1. Replace the experiment-only DT properties with an upstream-shaped T6040
-   raw-boot quirk/policy. Preserve the generated hierarchy: PMGR1 flattening is
-   independently proven fatal, while removal-only boots.
-2. Ask flokli for the J773s PMGR policy (draft only here; maintainer sends).
-3. Register a real DockChannel printk console if pre-console attribution is
+1. Ask flokli for the J773s PMGR policy (draft only here; maintainer sends).
+2. Register a real DockChannel printk console if pre-console attribution is
    still needed.
 
 Done this session: raw determinism, requested core-infra and PMGR1 isolations,

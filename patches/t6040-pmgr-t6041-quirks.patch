@@ -1,0 +1,75 @@
+From: Carl Joakim Damsleth <kim@damsleth.com>
+Subject: [PATCH] pmdomain: apple: encode T6041 raw-boot PMGR quirks
+
+T6041 raw boot leaves core firmware resources active, and two external-display
+CPU domains reject the generic AUTO_ENABLE write. The exact minimum was
+isolated on a T6040 J614s with the full 214-domain hierarchy: preserve domains
+that firmware left active, skip auto-enable only for dispext0_cpu and
+dispext1_cpu, and leave the separately inaccessible disp_cpu disabled in DT.
+
+Key that behavior from the existing T6041 compatible instead of temporary
+bring-up properties. Keep property handling for experiment reproduction and
+older trees.
+
+Also document the already-used T6041 PMGR compatibles in the bindings.
+
+diff --git a/Documentation/devicetree/bindings/arm/apple/apple,pmgr.yaml b/Documentation/devicetree/bindings/arm/apple/apple,pmgr.yaml
+--- a/Documentation/devicetree/bindings/arm/apple/apple,pmgr.yaml
++++ b/Documentation/devicetree/bindings/arm/apple/apple,pmgr.yaml
+@@ -48,6 +48,7 @@ properties:
+           - enum:
+               - apple,t6020-pmgr
+               - apple,t8122-pmgr
++              - apple,t6041-pmgr
+           - const: apple,t8103-pmgr
+           - const: syscon
+           - const: simple-mfd
+diff --git a/Documentation/devicetree/bindings/power/apple,pmgr-pwrstate.yaml b/Documentation/devicetree/bindings/power/apple,pmgr-pwrstate.yaml
+--- a/Documentation/devicetree/bindings/power/apple,pmgr-pwrstate.yaml
++++ b/Documentation/devicetree/bindings/power/apple,pmgr-pwrstate.yaml
+@@ -47,6 +47,7 @@ properties:
+           - enum:
+               - apple,t6020-pmgr-pwrstate
+               - apple,t8122-pmgr-pwrstate
++              - apple,t6041-pmgr-pwrstate
+           - const: apple,t8103-pmgr-pwrstate
+ 
+   reg:
+diff --git a/drivers/pmdomain/apple/pmgr-pwrstate.c b/drivers/pmdomain/apple/pmgr-pwrstate.c
+--- a/drivers/pmdomain/apple/pmgr-pwrstate.c
++++ b/drivers/pmdomain/apple/pmgr-pwrstate.c
+@@ -213,7 +213,6 @@ static int apple_pmgr_ps_probe(struct platform_device *pdev)
+ 		return -ENOMEM;
+ 
+ 	ps->dev = dev;
+-	ps->skip_auto_enable = of_property_read_bool(node, "apple,skip-auto-enable");
+ 	ps->regmap = regmap;
+ 
+ 	ret = of_property_read_string(node, "label", &name);
+@@ -222,6 +221,13 @@ static int apple_pmgr_ps_probe(struct platform_device *pdev)
+ 		return ret;
+ 	}
+ 
++	/* T6041 raw boot firmware locks auto-PM on the display CPU domains. */
++	ps->skip_auto_enable =
++		of_property_read_bool(node, "apple,skip-auto-enable") ||
++		(of_device_is_compatible(node, "apple,t6041-pmgr-pwrstate") &&
++		 (!strcmp(name, "dispext0_cpu") ||
++		  !strcmp(name, "dispext1_cpu")));
++
+ 	ret = of_property_read_u32(node, "reg", &ps->offset);
+ 	if (ret < 0) {
+ 		dev_err(dev, "missing reg property\n");
+@@ -239,7 +245,11 @@ static int apple_pmgr_ps_probe(struct platform_device *pdev)
+ 				   FIELD_PREP(APPLE_PMGR_PS_MIN, ps->min_state));
+ 
+ 	active = apple_pmgr_ps_is_active(ps);
+-	if (active && of_property_read_bool(node->parent, "apple,preserve-active"))
++	/*
++	 * T6041 raw boot has no earlier OS stage to quiesce firmware-owned domains.
++	 */
++	if (active && (of_property_read_bool(node->parent, "apple,preserve-active") ||
++		       of_device_is_compatible(node, "apple,t6041-pmgr-pwrstate")))
+ 		ps->genpd.flags |= GENPD_FLAG_ALWAYS_ON;
+ 
+ 	if (of_property_read_bool(node, "apple,always-on")) {

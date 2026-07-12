@@ -38,7 +38,7 @@ fixed, dapf gate + watchdog arm added for M4.
 
 | Works | Not yet |
 |---|---|
-| BusyBox userspace on mainline+3 patches, reproducible | Full-pmgr upstream policy (exact minimal workaround proven; NEXT_STEPS #2) |
+| BusyBox userspace; full PMGR with T6041 quirk, reproducible | PMGR patch review/upstream submission (NEXT_STEPS #2) |
 | Internal keyboard at the shell; trackpad registers + firmware loader | Paired trackpad blob/GPIO proxy; maxcpus>1, idle states (WFI state-loss on M4) |
 | Two-way Linux shell + m1n1 proxy over one DebugUSB cable; remote reboot | `console=ttydc0` printk (tty driver registers no console yet) |
 | Linux apple_wdt; fbcon early console | NVMe rootfs (PMGR + SARTv3 + ANS2 mapped; first probe gated) |
@@ -152,8 +152,9 @@ early console. (Testable incrementally against Stage C.)
   (preserve active, disable `disp_cpu`, skip auto-enable only for
   `dispext0_cpu` and `dispext1_cpu`) boots 3/3. Both CPU skips are necessary;
   the former `sys`, `fe`, and ANE restrictions are not.
-  Converting that into an upstream-shaped T6040 quirk is the remaining Stage C
-  PMGR work**; see NEXT_STEPS #2 and DEVLOG's PMGR section.
+  The live-tested T6041-compatible quirk now carries that policy without custom
+  DT booleans; review/upstream submission is the remaining Stage C PMGR work**;
+  see NEXT_STEPS #2 and DEVLOG's PMGR section.
 - **AIC3:** **works** — yuka's branch has `apple,t8122-aic3` support; boots and
   delivers interrupts (keyboard mailbox IRQs verified live). Two locked-sysreg
   writes in `aic_init_cpu` must be skipped on M4 raw-boot (flokli patch).

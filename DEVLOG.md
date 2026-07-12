@@ -236,6 +236,17 @@ rebuilt standard `t6040-j614s-dcuart.dtb`
 reached the Linux banner and BusyBox, so the standard build no longer depends
 on an experiment-only variant DTB.
 
+**Upstream-shaped selection (2026-07-13):**
+`patches/t6040-pmgr-t6041-quirks.patch` keys preserve-active behavior and the
+two `dispext*_cpu` auto-enable exclusions from the already-present T6041
+compatible, and documents the compatible in both PMGR bindings. Linux commit
+`37339d595765` removes all six experiment-only booleans from the standard DT;
+`disp_cpu` remains disabled. Kernel build #14 reached BusyBox with zero
+`apple,preserve-active`/`apple,skip-auto-enable` properties in its DTB.
+Artifacts: `Image` SHA-256
+`925303d09ae6190e8b0bc59824af6d621daefcbedc162f9787d495d3ed7c965a`,
+DTB `a99ad7c3f304198280814de1e4a31d83c268751af608afad7003aa982a69f65a`.
+
 `pmgr_adt2dt.py` was fixed in m1n1 `5dc76503` (curated branch `effcc16c`):
 Apple `critical` no longer silently becomes Linux always-on policy, and parents
 with `no_ps` no longer produce dangling phandles.

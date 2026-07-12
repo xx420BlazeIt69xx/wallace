@@ -76,6 +76,19 @@ else
     echo "aic_init_cpu locked-sysreg writes disabled OK"
 fi
 
+echo "== apply T6041 PMGR raw-boot quirks =="
+if grep -q 'T6041 raw boot firmware locks auto-PM' \
+    drivers/pmdomain/apple/pmgr-pwrstate.c; then
+    echo "t6040-pmgr-t6041-quirks.patch already applied"
+elif git apply --check /out/t6040-pmgr-t6041-quirks.patch 2>/dev/null; then
+    git apply /out/t6040-pmgr-t6041-quirks.patch
+    echo "t6040-pmgr-t6041-quirks.patch applied OK"
+else
+    echo "ERROR: t6040-pmgr-t6041-quirks.patch does not apply cleanly:"
+    git apply --check /out/t6040-pmgr-t6041-quirks.patch || true
+    exit 1
+fi
+
 if [ "${PMGR_FUNCTIONAL:-0}" = "1" ]; then
     echo "== apply minimal T6040 PMGR functional policy =="
     if grep -q 'skipping unsupported auto-enable' drivers/pmdomain/apple/pmgr-pwrstate.c; then
