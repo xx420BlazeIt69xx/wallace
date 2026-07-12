@@ -165,7 +165,13 @@ Kernel build #12 (`Image` SHA-256 `93c33ea10dddcc69b50c39a7c0b64a7a8d9c5485bfcc9
 booted to BusyBox. Two event0 opens independently returned `-ENOENT` for the
 missing blob; neither sent command `0x40`, timed out, nor left `starting` stuck.
 Use `TRACKPAD_FIRMWARE=... scripts/t6040-make-initramfs.sh` after extracting the
-paired file. GPIO proxying remains intentionally absent until any request and
+paired file; the script now validates its HIDF header and bounds before copying
+it. Current upstream `asahi-installer` needs no J614s mapping: its generic
+multitouch collector scans every `j*` directory and names the result from that
+directory. The actual blocker is retrieving this target's ESP copy at
+`vendorfw/apple/tpmtfw-j614s.bin` (or its `asahi/all_firmware.tar.gz`); neither
+is present on the development host. GPIO proxying remains intentionally absent
+until any request and
 its J614s ADT mapping are captured and reviewed. A later ADT-only capture found
 `function-afe-reset = pKW4('gp1c', 0x10000)` through phandle 294,
 `/arm-io/smc/iop-smc-nub/smc-pmu`. The legacy pulse would write SMC key `gp1c`

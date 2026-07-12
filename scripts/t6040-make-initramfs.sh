@@ -16,6 +16,29 @@ install -m 0755 "$INIT_SOURCE" "$TMP/init"
 # Optional paired Apple trackpad firmware, produced by asahi-fwextract.
 # Example: TRACKPAD_FIRMWARE=/path/to/tpmtfw-j614s.bin ./scripts/t6040-make-initramfs.sh
 if [ -n "${TRACKPAD_FIRMWARE:-}" ]; then
+    python3 - "$TRACKPAD_FIRMWARE" <<'PY'
+import pathlib
+import struct
+import sys
+
+path = pathlib.Path(sys.argv[1])
+data = path.read_bytes()
+if len(data) < 20:
+    raise SystemExit(f"{path}: truncated HIDF header ({len(data)} bytes)")
+
+magic, version, header_length, data_length, iface_offset = \
+    struct.unpack_from("<4sIIII", data)
+if magic != b"HIDF" or version != 1:
+    raise SystemExit(f"{path}: not a version-1 HIDF trackpad image")
+if header_length < 20 or header_length > len(data):
+    raise SystemExit(f"{path}: invalid HIDF header length {header_length}")
+if data_length > len(data) - header_length:
+    raise SystemExit(f"{path}: truncated HIDF payload ({data_length} bytes declared)")
+if iface_offset >= data_length:
+    raise SystemExit(f"{path}: HID interface offset is outside the payload")
+
+print(f"trackpad HIDF OK: {data_length} payload bytes, interface offset {iface_offset}")
+PY
     install -d "$TMP/lib/firmware/apple"
     install -m 0644 "$TRACKPAD_FIRMWARE" \
         "$TMP/lib/firmware/apple/tpmtfw-j614s.bin"

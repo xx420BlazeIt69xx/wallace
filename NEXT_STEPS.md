@@ -12,8 +12,9 @@ Read the DebugUSB link rules in DEVLOG before touching the rig.
 transport's missing firmware loader and stuck-start error path are fixed and
 live-tested in kernel build #12: repeated opens now independently request
 `apple/tpmtfw-j614s.bin` and return `-ENOENT`, with no invalid resets or stale
-`-EINPROGRESS`. Extract the paired HIDF blob from this machine's macOS firmware
-with `asahi-fwextract`, rebuild the initramfs with
+`-EINPROGRESS`. Retrieve the paired HIDF blob from this target's Asahi ESP at
+`vendorfw/apple/tpmtfw-j614s.bin`, or process its
+`asahi/all_firmware.tar.gz` with `asahi-fwextract`, then rebuild with
 `TRACKPAD_FIRMWARE=/path/to/tpmtfw-j614s.bin`, and retest motion. If MTP then
 requests its reset GPIO, stop: the now-derived `gp1c` function resolves through
 the ADT's `smc-pmu` node, and PMU writes are forbidden by the project rules.

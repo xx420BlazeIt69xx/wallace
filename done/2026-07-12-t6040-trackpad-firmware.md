@@ -28,7 +28,17 @@ errors, timed out, and left `iface->starting` set, so every later open returned
 The J614s board DT requests `apple/tpmtfw-j614s.bin` (Linux commit
 `6399cdc1bb94`). `scripts/t6040-make-initramfs.sh` accepts
 `TRACKPAD_FIRMWARE=/path/to/tpmtfw-j614s.bin` and installs it at the matching
-`/lib/firmware/apple/` path.
+`/lib/firmware/apple/` path after validating the HIDF magic, version, header,
+payload bounds, and interface offset.
+
+Current upstream `asahi-installer` commit `c53d66dc7193` does not require a
+board mapping for this file. Its
+[`MultitouchFWCollection`](https://github.com/AsahiLinux/asahi-installer/blob/c53d66dc71937efa2530d4323c81addaebb5a09b/asahi_firmware/multitouch.py)
+scans every `j*` directory in the collected FUD firmware and derives the
+`tpmtfw-<machine>.bin` name directly. The remaining provisioning prerequisite
+is therefore access to this target's Asahi ESP: either the already-extracted
+`vendorfw/apple/tpmtfw-j614s.bin` or `asahi/all_firmware.tar.gz`. A local search
+found neither file, no IPSW cache, and no installed extractor on the host.
 
 ## Live negative-path proof
 
@@ -45,9 +55,9 @@ DT association and retry cleanup before using a proprietary blob.
 
 ## Remaining
 
-1. Obtain this machine's paired `tpmtfw-j614s.bin` through the Asahi vendor
-   firmware extraction flow. It was not present on the development host or in
-   the current minimal initramfs; do not substitute a blob from another board.
+1. Retrieve this machine's paired `tpmtfw-j614s.bin` from its Asahi ESP, or run
+   the ESP's `asahi/all_firmware.tar.gz` through the Asahi vendor-firmware
+   extraction flow. Do not substitute a blob from another board.
 2. Rebuild the initramfs with `TRACKPAD_FIRMWARE=...`, boot, and open event0.
 3. If firmware upload exposes an MTP GPIO request, capture its interface, ID,
    name, and command, but do not acknowledge it with a pulse. Read-only ADT
