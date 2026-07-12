@@ -22,6 +22,10 @@ SPECS=(
 	"preserve-dispext-disp:raw:all:legacy:preserve-dispext-disp"
 	"minimal-dispext0:raw:all:legacy:preserve-disp-dispext0"
 	"minimal-dispext1:raw:all:legacy:preserve-disp-dispext1"
+	"minimal-no-sys:raw:all:legacy:preserve-disp-no-sys"
+	"minimal-no-fe:raw:all:legacy:preserve-disp-no-fe"
+	"minimal-no-cpu:raw:all:legacy:preserve-disp-no-cpu"
+	"minimal-cpu-only:raw:all:legacy:preserve-disp-cpu-only"
 	"restricted-domains:raw:all:legacy:restricted"
 	"functional-policy:raw:all:legacy:functional"
 	"core-infra-pruned:core-infra-pruned:all:legacy:none"
@@ -120,7 +124,11 @@ EOF
 	   [ "$policy" = preserve-pmgr1 ] || \
 	   [ "$policy" = preserve-dispext-disp ] || \
 	   [ "$policy" = preserve-disp-dispext0 ] || \
-	   [ "$policy" = preserve-disp-dispext1 ]; then
+	   [ "$policy" = preserve-disp-dispext1 ] || \
+	   [ "$policy" = preserve-disp-no-sys ] || \
+	   [ "$policy" = preserve-disp-no-fe ] || \
+	   [ "$policy" = preserve-disp-no-cpu ] || \
+	   [ "$policy" = preserve-disp-cpu-only ]; then
 		cat >> "$board" <<'EOF'
 
 /* Firmware-owned PMGR1 display CPU domain. */
@@ -150,6 +158,44 @@ EOF
 /* PMGR2 display-ext1 domains whose auto-enable writes are unsupported. */
 &ps_dispext1_sys { apple,skip-auto-enable; };
 &ps_dispext1_fe { apple,skip-auto-enable; };
+&ps_dispext1_cpu { apple,skip-auto-enable; };
+EOF
+	fi
+	if [ "$policy" = preserve-disp-no-sys ]; then
+		cat >> "$board" <<'EOF'
+
+/* Minimal-policy necessity test: no sys skips. */
+&ps_dispext0_fe { apple,skip-auto-enable; };
+&ps_dispext0_cpu { apple,skip-auto-enable; };
+&ps_dispext1_fe { apple,skip-auto-enable; };
+&ps_dispext1_cpu { apple,skip-auto-enable; };
+EOF
+	fi
+	if [ "$policy" = preserve-disp-no-fe ]; then
+		cat >> "$board" <<'EOF'
+
+/* Minimal-policy necessity test: no fe skips. */
+&ps_dispext0_sys { apple,skip-auto-enable; };
+&ps_dispext0_cpu { apple,skip-auto-enable; };
+&ps_dispext1_sys { apple,skip-auto-enable; };
+&ps_dispext1_cpu { apple,skip-auto-enable; };
+EOF
+	fi
+	if [ "$policy" = preserve-disp-no-cpu ]; then
+		cat >> "$board" <<'EOF'
+
+/* Minimal-policy necessity test: no cpu skips. */
+&ps_dispext0_sys { apple,skip-auto-enable; };
+&ps_dispext0_fe { apple,skip-auto-enable; };
+&ps_dispext1_sys { apple,skip-auto-enable; };
+&ps_dispext1_fe { apple,skip-auto-enable; };
+EOF
+	fi
+	if [ "$policy" = preserve-disp-cpu-only ]; then
+		cat >> "$board" <<'EOF'
+
+/* Candidate minimum: only the two dispext CPU auto-enable skips. */
+&ps_dispext0_cpu { apple,skip-auto-enable; };
 &ps_dispext1_cpu { apple,skip-auto-enable; };
 EOF
 	fi

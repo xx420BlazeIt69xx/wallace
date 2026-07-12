@@ -11,13 +11,13 @@ long-term plan in `roadmap.md`; per-session write-ups in `done/`.
 | Mainline Linux (7.2-rc2 + 3 small patches) to BusyBox userspace | minimal DT, maxcpus=1, reproducible |
 | Two-way m1n1 proxy/console over DebugUSB (KIS) | one DP/TB cable in the DFU port; no second machine-side cable needed |
 | Two-way **Linux shell** on `/dev/ttydc0` over the same cable | poll-mode dockchannel driver; full remote dev loop, no screen-reading |
-| Internal keyboard (+trackpad registers) at the shell | dockchannel-HID; trackpad events untested |
+| Internal keyboard (+trackpad registers) at the shell | dockchannel-HID; trackpad start currently fails |
 | Framebuffer console (simpledrm + fbcon) | the early-boot console; dcuart covers post-probe |
 | Linux `apple_wdt` takes over m1n1's watchdog | shell survives past the 20 s bite |
 | Remote reboot via `macvdmtool` | full autonomous reboot→chainload→boot→shell cycle |
 
-Active: full PMGR topology boots reproducibly with a minimal raw-boot policy;
-upstream-shaped policy and exact dispext minimum remain (see PMGR section).
+Active: full PMGR topology boots reproducibly with the exact minimal raw-boot
+policy; only its upstream shape remains (see PMGR section).
 Trackpad interface start is confirmed broken. Parked: USB gadget console (EP0
 dies post-enumeration; `done/2026-07-11-t6040-usb-gadget-plan.md`).
 
@@ -136,8 +136,8 @@ code-only series lives on branch `t6040-bringup` (worktree `~/Code/m1n1-clean`).
    `idle=[wfi|nop]`; boot with `idle=nop` (plain mainline ignores `idle=`).
 4. **No fbcon in defconfig** — DRM_SIMPLEDRM + DRM_FBDEV_EMULATION +
    FRAMEBUFFER_CONSOLE + ARM64_SME=off, forced by kbuild.sh.
-5. **Fuller-DT hang = pmgr** — see PMGR section below; still the active blocker
-   for the full DT.
+5. **Fuller-DT hang = pmgr** — see PMGR section below; isolated and worked
+   around with a proven minimal policy.
 
 ### Internal keyboard (2026-07-11, session 4) — three independent bugs
 (a) m1n1 skipped dart-mtp DAPF programming on t6040 (src/dapf.c);
@@ -179,19 +179,26 @@ Linux `apple_wdt` takes over m1n1's WD1; BusyBox pings `/dev/watchdog0` every
 ## PMGR investigation (sessions 2–4, 2026-07-11/12)
 
 **Deterministic result (2026-07-12): the full 214-domain topology boots 3/3**
-with this minimal temporary raw-boot policy:
+with this exact minimal temporary raw-boot policy:
 - preserve every domain found active at probe (`apple,preserve-active` on all
   four controllers);
 - disable only `disp_cpu`;
-- skip auto-enable on dispext0/1 `sys`, `fe`, and `cpu`.
+- skip auto-enable only on `dispext0_cpu` and `dispext1_cpu`.
 
 The legacy raw tree fails 3/3. The five ANE exclusions in the previous broad
-functional policy are unnecessary. Both dispext banks are required at current
-granularity. PMGR1 reparent-only fails while removal-only boots, proving that
+functional policy are unnecessary, as are both banks' `sys` and `fe` skips.
+Removing either CPU bank's exception fails; the two CPU skips alone boot 3/3.
+PMGR1 reparent-only fails while removal-only boots, proving that
 the old curated regression came from flattening, not class removal. Removing
 only AMCC/DCS/fabric/`soc_dpe` does not boot. Exact DTB hashes, negative controls,
 and caveats about invalid whole-controller deletion tests are in
 `done/2026-07-12-t6040-pmgr-matrix.md`.
+
+The policy is now in the kernel DT source at Linux commit `4da589ce34d6`. The
+rebuilt standard `t6040-j614s-dcuart.dtb`
+(`34d6e8f574dec2d1b0669e3f03fb1df7b5e3cee278ac23a4cc304e903187d9c0`)
+reached the Linux banner and BusyBox, so the standard build no longer depends
+on an experiment-only variant DTB.
 
 `pmgr_adt2dt.py` was fixed in m1n1 `5dc76503` (curated branch `effcc16c`):
 Apple `critical` no longer silently becomes Linux always-on policy, and parents

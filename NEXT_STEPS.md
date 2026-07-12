@@ -15,21 +15,20 @@ the next open returns `-EINPROGRESS` because `iface->starting` stays set. Fix th
 DockChannel HID start/error-recovery path, then retest motion events. No tactile
 click is expected yet (the haptic actuator is a separate interface).
 
-## 2. Finish the minimal full-PMGR policy
-The full 214-domain topology now boots to BusyBox **3/3** with a much smaller
-functional policy: preserve firmware-active domains, disable only `disp_cpu`,
-and skip auto-enable on dispext0/1 `sys`/`fe`/`cpu`. Legacy raw fails 3/3. The
-five old ANE exclusions are proven unnecessary. Full matrix and hashes:
+## 2. Upstream-shape the proven full-PMGR policy
+The full 214-domain topology now boots to BusyBox **3/3** with the exact minimal
+temporary policy: preserve firmware-active domains, disable only `disp_cpu`,
+and skip auto-enable only on `dispext0_cpu` and `dispext1_cpu`. Both CPU skips
+are individually necessary at bank granularity; the `sys`, `fe`, and five old
+ANE exclusions are unnecessary. Legacy raw fails 3/3. Full matrix and hashes:
 `done/2026-07-12-t6040-pmgr-matrix.md`.
 
 Next, in leverage order:
-1. Split each dispext bank's `sys`/`fe`/`cpu` skip-auto members to find the exact
-   minimum (both banks are required, but individual members are untested).
-2. Replace the experiment-only DT properties with an upstream-shaped T6040
+1. Replace the experiment-only DT properties with an upstream-shaped T6040
    raw-boot quirk/policy. Preserve the generated hierarchy: PMGR1 flattening is
    independently proven fatal, while removal-only boots.
-3. Ask flokli for the J773s PMGR policy (draft only here; maintainer sends).
-4. Register a real DockChannel printk console if pre-console attribution is
+2. Ask flokli for the J773s PMGR policy (draft only here; maintainer sends).
+3. Register a real DockChannel printk console if pre-console attribution is
    still needed.
 
 Done this session: raw determinism, requested core-infra and PMGR1 isolations,
@@ -38,7 +37,7 @@ live ADT regeneration, `no_ps` parent filtering, and safe always-on generation
 
 ## 3. Persist userspace comfort / start NVMe
 - Fuller initramfs (real busybox userland, mount tools), then begin DART + ANS2
-  enablement for a rootfs on internal NVMe. The reproducible minimal PMGR policy
+  enablement for a rootfs on internal NVMe. The proven minimal PMGR policy
   is sufficient to unblock this work while its upstream shape is refined.
 
 ## 4. Upstream / share

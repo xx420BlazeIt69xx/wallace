@@ -38,8 +38,8 @@ fixed, dapf gate + watchdog arm added for M4.
 
 | Works | Not yet |
 |---|---|
-| BusyBox userspace on mainline+3 patches, reproducible | Full-pmgr upstream policy (minimal workaround boots 3/3; NEXT_STEPS #2) |
-| Internal keyboard at the shell; trackpad registers (events untested) | maxcpus>1, idle states (WFI state-loss on M4) |
+| BusyBox userspace on mainline+3 patches, reproducible | Full-pmgr upstream policy (exact minimal workaround proven; NEXT_STEPS #2) |
+| Internal keyboard at the shell; trackpad registers | Trackpad interface start; maxcpus>1, idle states (WFI state-loss on M4) |
 | Two-way Linux shell + m1n1 proxy over one DebugUSB cable; remote reboot | `console=ttydc0` printk (tty driver registers no console yet) |
 | Linux apple_wdt; fbcon early console | NVMe rootfs (needs pmgr → dart → ans2) |
 | Kernel build env (podman, arm64-native) with patch pipeline | USB gadget console (parked: EP0 dies post-enumeration) |
@@ -148,8 +148,10 @@ early console. (Testable incrementally against Stage C.)
   handoff blocker was the m1n1 dapf init (all t6040 dapf entries trap; gated in
   `src/dapf.c`). Board variants: `-kbd` (keyboard, known-good) and `-dcuart`
   (keyboard + DockChannel shell, preserved at `~/Code/wallace/dts/`). **Remaining:
-  full-pmgr legacy policy hangs pre-console, but a deterministic minimal policy
-  (preserve active, disable `disp_cpu`, skip dispext0/1 auto-enable) boots 3/3.
+  full-pmgr legacy policy hangs pre-console, but the exact deterministic minimum
+  (preserve active, disable `disp_cpu`, skip auto-enable only for
+  `dispext0_cpu` and `dispext1_cpu`) boots 3/3. Both CPU skips are necessary;
+  the former `sys`, `fe`, and ANE restrictions are not.
   Converting that into an upstream-shaped T6040 quirk is the remaining Stage C
   PMGR work**; see NEXT_STEPS #2 and DEVLOG's PMGR section.
 - **AIC3:** **works** — yuka's branch has `apple,t8122-aic3` support; boots and
@@ -179,7 +181,7 @@ maxcpus>1 + cpufreq DT wiring.
   the USB-gadget console m1n1 already proves works.
 - **Internal keyboard + trackpad:** ✅ **keyboard DONE early (2026-07-11)** via
   dockchannel-HID (three bugs fixed — see DEVLOG); trackpad registers as
-  input0, events not yet verified (NEXT_STEPS #1).
+  input0, but its interface reset/start currently fails (NEXT_STEPS #1).
 - **Display:** two steps.
   1. `simpledrm` on the m1n1-provided framebuffer — works immediately, no
      driver; gives a desktop-capable (unaccelerated) console. This alone plus
