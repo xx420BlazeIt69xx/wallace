@@ -1,0 +1,63 @@
+Remove stale MTP wake diagnostics from a reused bring-up build tree.
+
+These unconditional info logs and mailbox-control reads were useful while the
+MTP IRQ ordering was unknown. They are not part of the supported DockChannel
+series and should not survive in normal images.
+
+--- a/drivers/soc/apple/mailbox.c
++++ b/drivers/soc/apple/mailbox.c
+@@ -112,9 +112,6 @@ int apple_mbox_send(struct apple_mbox *mbox, const struct apple_mbox_msg msg,
+ 	spin_lock_irqsave(&mbox->tx_lock, flags);
+ 	mbox_ctrl = readl_relaxed(mbox->regs + mbox->hw->a2i_control);
+ 
+-	dev_info(mbox->dev, "MTPDBG ASC pre-send a2i=%#x i2a=%#x\n", mbox_ctrl,
+-		 readl_relaxed(mbox->regs + mbox->hw->i2a_control));
+-
+ 	while (mbox_ctrl & mbox->hw->control_full) {
+ 		if (atomic) {
+ 			ret = readl_poll_timeout_atomic(
+@@ -162,11 +159,6 @@ int apple_mbox_send(struct apple_mbox *mbox, const struct apple_mbox_msg msg,
+ 	writeq_relaxed(FIELD_PREP(APPLE_MBOX_MSG1_MSG, msg.msg1),
+ 		       mbox->regs + mbox->hw->a2i_send1);
+ 
+-	dev_info(mbox->dev,
+-		 "MTPDBG ASC sent msg0=%#llx msg1=%#x a2i=%#x i2a=%#x\n",
+-		 msg.msg0, msg.msg1,
+-		 readl_relaxed(mbox->regs + mbox->hw->a2i_control),
+-		 readl_relaxed(mbox->regs + mbox->hw->i2a_control));
+ 	spin_unlock_irqrestore(&mbox->tx_lock, flags);
+ 
+ 	return 0;
+@@ -226,14 +218,10 @@ static int apple_mbox_poll_locked(struct apple_mbox *mbox)
+ static irqreturn_t apple_mbox_recv_irq(int irq, void *data)
+ {
+ 	struct apple_mbox *mbox = data;
+-	int count;
+ 
+ 	spin_lock(&mbox->rx_lock);
+-	count = apple_mbox_poll_locked(mbox);
++	apple_mbox_poll_locked(mbox);
+ 	spin_unlock(&mbox->rx_lock);
+ 
+-	dev_info(mbox->dev, "MTPDBG ASC recv IRQ %d drained %d message(s)\n",
+-		 irq, count);
+-
+ 	return IRQ_HANDLED;
+ }
+--- a/drivers/soc/apple/rtkit.c
++++ b/drivers/soc/apple/rtkit.c
+@@ -929,13 +929,7 @@ int apple_rtkit_wake(struct apple_rtkit *rtk)
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = apple_rtkit_boot(rtk);
+-	if (ret) {
+-		int polled = apple_mbox_poll(rtk->mbox);
+-
+-		dev_info(rtk->dev, "MTPDBG RTKit wake ret=%d late poll=%d\n", ret, polled);
+-	}
+-	return ret;
++	return apple_rtkit_boot(rtk);
+ }
+ EXPORT_SYMBOL_GPL(apple_rtkit_wake);
+ 

@@ -115,9 +115,9 @@ DT sources: `t6040.dtsi` / `t6040-j614s*.dts` / `t6040-pmgr.dtsi` in
 `~/Code/wallace/dts/t6040-j614s-dcuart.dts` (self-contained: defines the
 dockchannel-uart nodes under &soc itself).
 
-Known-good artifacts (in `~/Code/linux-build-out/`), kernel build #11:
-- `Image` `3f2eab6dc3c46e0df19e954f026865d3203acb03c73cbe608edb9001f35fd867`
-- `t6040-j614s-dcuart.dtb` `f3f595dab17a1e536540ac8c82ed2b25442bfd37491137fdad9ef0190415cde8`
+Known-good artifacts (in `~/Code/linux-build-out/`), kernel build #15:
+- `Image` `14da8640398fc64b89d9241a75be0ffc8d4260b681068a3c27251cc79c3abaf4`
+- `t6040-j614s-dcuart.dtb` `a99ad7c3f304198280814de1e4a31d83c268751af608afad7003aa982a69f65a`
 - `initramfs-dcuart.cpio.gz` `512c69da94884f3ea83f9a6a4ea0731dcad6b5aaa87eb875ca5a6d7b24c317ca`
 
 m1n1: `export PATH="$(brew --prefix llvm)/bin:$PATH"; make -j8` →

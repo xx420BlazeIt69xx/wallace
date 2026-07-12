@@ -244,7 +244,10 @@ probe with -22; the first error path reaching hid_hw_stop() jumped to NULL.
 Fix: no-op dchid_stop + `.stop = dchid_stop` in dchid_ll.
 `.plans/t6040-dockchannel-fixes.patch` (also in /out; kbuild.sh now applies it
 with DOCKCHANNEL=1). The stale MTPDBG debug patch was removed from the
-container tree at the same time — the rebuilt Image is clean + stop-fix only.
+container tree at the same time. It later resurfaced because the build clone
+was reused; `patches/t6040-remove-mtpdbg.patch` now makes that cleanup
+deterministic. Known-good build #15 contains no MTPDBG strings and boots to
+BusyBox with the keyboard registered.
 
 New artifacts:
 - `Image` / `Image-keyboard`

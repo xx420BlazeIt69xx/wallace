@@ -76,6 +76,21 @@ else
     echo "aic_init_cpu locked-sysreg writes disabled OK"
 fi
 
+# A reused build tree can retain the old MTP IRQ-order diagnostics even though
+# the source tree and current patch set are clean. Remove that known residue
+# deterministically instead of allowing unconditional mailbox logs into images.
+if grep -qR 'MTPDBG' drivers/soc/apple/mailbox.c drivers/soc/apple/rtkit.c; then
+    echo "== remove stale MTPDBG instrumentation =="
+    if git apply --check /out/t6040-remove-mtpdbg.patch 2>/dev/null; then
+        git apply /out/t6040-remove-mtpdbg.patch
+        echo "t6040-remove-mtpdbg.patch applied OK"
+    else
+        echo "ERROR: stale MTPDBG code does not match the known removal patch:"
+        git apply --check /out/t6040-remove-mtpdbg.patch || true
+        exit 1
+    fi
+fi
+
 echo "== apply T6041 PMGR raw-boot quirks =="
 if grep -q 'T6041 raw boot firmware locks auto-PM' \
     drivers/pmdomain/apple/pmgr-pwrstate.c; then
