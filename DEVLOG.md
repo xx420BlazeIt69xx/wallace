@@ -235,6 +235,13 @@ v4 mailbox, SART v3, and T8103-compatible ANS2 combinations. All three schemas
 and checkpatch pass; `CHECK_DTBS=y` then reports no storage-node warnings for
 the candidate. Other platform/AIC/watchdog/DockChannel warnings predate ANS.
 
+A source audit found the T8103 fallbacks agree with m1n1 on ASC v4, SART v3,
+64-entry linear queues, and all functional ANS/NVMMU offsets. m1n1's historical
+TCB-status diagnostic read is `0x29120` versus Linux's `0x28120`; both values
+predate T6040, and the read only warns after invalidation. Treat it as an
+upstream discrepancy to resolve from a reviewed register source, not by live
+probing, and do not expand the approved first-probe write set for it.
+
 ### Watchdog (2026-07-11)
 Linux `apple_wdt` takes over m1n1's WD1; BusyBox pings `/dev/watchdog0` every
 10 s. m1n1 arms WD1 for ~20 s on M4 before handoff (`src/kboot.c`,
