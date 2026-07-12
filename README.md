@@ -61,5 +61,3 @@ This is a real, tethered daily-driver machine, and M4 raw-boot punishes curiosit
 ## Standing on shoulders
 
 None of this happens without [Asahi Linux](https://asahilinux.org/) (m1n1, kisd, a decade of collective RE), yuka's minimal M4/M5 device trees, and flokli's t6040 groundwork. The goal is to feed everything back upstream.
-
-Small patches, verified against live hardware, upstreamed fast. That's the whole method.
