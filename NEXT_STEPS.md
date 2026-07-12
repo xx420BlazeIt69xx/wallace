@@ -7,35 +7,39 @@ cable; reboot via `macvdmtool`. No screen-reading or physical access needed.
 Operational details, recipes, and history: `DEVLOG.md`. Long-term: `roadmap.md`.
 Read the DebugUSB link rules in DEVLOG before touching the rig.
 
-## 1. Trackpad events (quick, first boot of the next session)
-At the shell: `cat /dev/input/event0 | hexdump | head` and swipe (keyboard is
-likely event1; try both). input0 = Apple DockChannel Multi-touch,
-input1 = Apple DockChannel Keyboard. Now trivial over the dcuart shell.
+## 1. Trackpad interface start (confirmed broken)
+`event0` is Apple DockChannel Multi-touch and `event1` is the keyboard. A swipe
+test fails even immediately after a fresh boot: the first event0 open sends two
+command-0x40 resets, firmware returns `0xe00002c2`, and `dchid_open()` times out;
+the next open returns `-EINPROGRESS` because `iface->starting` stays set. Fix the
+DockChannel HID start/error-recovery path, then retest motion events. No tactile
+click is expected yet (the haptic actuator is a separate interface).
 
-## 2. Full-pmgr DT bring-up (the active blocker)
-The 214-domain autogen pmgr hangs pre-console without the functional-policy
-patch. The blindness that stalled session 2 is half-solved (dcuart shell =
-post-userspace visibility). In leverage order:
-1. **Ask flokli** — owns a J773s (same die), has m1n1 PR #597 + a minimal DT
-   booting maxcpus=1; has almost certainly solved pmgr. Get his pmgr dtsi.
-2. **Determinism first**: re-run the SAME hanging DTB 2–3× before trusting any
-   new bisection data point (never established in session 2).
-3. **One-variable isolations**: autogen pmgr with ONLY amcc/dcs/fab/soc_dpe
-   removed+reparented (tests core-infra claim without the pmgr1 confound);
-   autogen pmgr1 reparented-only vs removed-only (splits the reparent confound).
-4. **Apple ground truth**: macOS `ioreg -p IODeviceTree -l` or a live ADT dump
-   → validate generated reg offsets/parents/always-on. Fix `pmgr_adt2dt.py`'s
-   always-on derivation (known wrong vs yuka's t8132: over-marks pmc/pms_*,
-   misses aic) regardless.
-5. **Pre-console visibility** (if still needed): a tiny printk/earlycon poller
-   writing raw bytes into the dockchannel FIFO (regs usable from the first
-   kernel instruction; m1n1-style TX needs no IRQ). Also worth doing properly:
-   register a real console in the dockchannel tty driver so `console=ttydc0`
-   works.
+## 2. Finish the minimal full-PMGR policy
+The full 214-domain topology now boots to BusyBox **3/3** with a much smaller
+functional policy: preserve firmware-active domains, disable only `disp_cpu`,
+and skip auto-enable on dispext0/1 `sys`/`fe`/`cpu`. Legacy raw fails 3/3. The
+five old ANE exclusions are proven unnecessary. Full matrix and hashes:
+`done/2026-07-12-t6040-pmgr-matrix.md`.
 
-## 3. Persist userspace comfort
-- Fuller initramfs (real busybox userland, mount tools), then rootfs on NVMe
-  (needs pmgr + dart + ans2 — sequenced after step 2).
+Next, in leverage order:
+1. Split each dispext bank's `sys`/`fe`/`cpu` skip-auto members to find the exact
+   minimum (both banks are required, but individual members are untested).
+2. Replace the experiment-only DT properties with an upstream-shaped T6040
+   raw-boot quirk/policy. Preserve the generated hierarchy: PMGR1 flattening is
+   independently proven fatal, while removal-only boots.
+3. Ask flokli for the J773s PMGR policy (draft only here; maintainer sends).
+4. Register a real DockChannel printk console if pre-console attribution is
+   still needed.
+
+Done this session: raw determinism, requested core-infra and PMGR1 isolations,
+live ADT regeneration, `no_ps` parent filtering, and safe always-on generation
+(no policy by default; explicit legacy flag only).
+
+## 3. Persist userspace comfort / start NVMe
+- Fuller initramfs (real busybox userland, mount tools), then begin DART + ANS2
+  enablement for a rootfs on internal NVMe. The reproducible minimal PMGR policy
+  is sufficient to unblock this work while its upstream shape is refined.
 
 ## 4. Upstream / share
 - Post the drafted writeups: `done/2026-07-10-t6040-smp-writeup.md`,

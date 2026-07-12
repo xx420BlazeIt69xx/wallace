@@ -36,7 +36,9 @@ LOG="${TMPDIR:-/tmp}/kisd-console.log"
 
 # one kisd, freshly started, so the log and pty are always current
 pkill -x kisd 2>/dev/null && sleep 1
-RUST_LOG=info "$KISD" > "$LOG" 2>&1 &
+# Detach from short-lived automation shells as well as interactive terminals;
+# otherwise their exit can reap kisd and leave /tmp/m1n1 dangling.
+nohup env RUST_LOG=info "$KISD" > "$LOG" 2>&1 < /dev/null &
 echo "started kisd (log: $LOG)"
 sleep 2
 

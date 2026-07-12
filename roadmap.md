@@ -38,7 +38,7 @@ fixed, dapf gate + watchdog arm added for M4.
 
 | Works | Not yet |
 |---|---|
-| BusyBox userspace on mainline+3 patches, reproducible | Full-pmgr DT hangs pre-console (ACTIVE blocker — NEXT_STEPS #2) |
+| BusyBox userspace on mainline+3 patches, reproducible | Full-pmgr upstream policy (minimal workaround boots 3/3; NEXT_STEPS #2) |
 | Internal keyboard at the shell; trackpad registers (events untested) | maxcpus>1, idle states (WFI state-loss on M4) |
 | Two-way Linux shell + m1n1 proxy over one DebugUSB cable; remote reboot | `console=ttydc0` printk (tty driver registers no console yet) |
 | Linux apple_wdt; fbcon early console | NVMe rootfs (needs pmgr → dart → ans2) |
@@ -141,14 +141,17 @@ early console. (Testable incrementally against Stage C.)
 
 *Target: linux-asahi boots to a shell on this machine. Weeks, parallel with B.*
 
-- **Device trees:** **MINIMAL DT BOOTS TO USERSPACE (2026-07-11).** `t6040.dtsi`
+- **Device trees:** **FULL 214-DOMAIN PMGR TO USERSPACE (2026-07-12, temporary
+  policy).** `t6040.dtsi`
   + `t6040-j614s*.dts` + generated `t6040-pmgr.dtsi` in `~/code/linux`
   (templated from t8132/t6050, ADT-verified). The 2026-07-10 async-L2C-SError
   handoff blocker was the m1n1 dapf init (all t6040 dapf entries trap; gated in
   `src/dapf.c`). Board variants: `-kbd` (keyboard, known-good) and `-dcuart`
   (keyboard + DockChannel shell, preserved at `~/Code/wallace/dts/`). **Remaining:
-  full-pmgr DT hangs pre-console** — the Stage C critical path; see
-  NEXT_STEPS #2 and DEVLOG's PMGR section.
+  full-pmgr legacy policy hangs pre-console, but a deterministic minimal policy
+  (preserve active, disable `disp_cpu`, skip dispext0/1 auto-enable) boots 3/3.
+  Converting that into an upstream-shaped T6040 quirk is the remaining Stage C
+  PMGR work**; see NEXT_STEPS #2 and DEVLOG's PMGR section.
 - **AIC3:** **works** — yuka's branch has `apple,t8122-aic3` support; boots and
   delivers interrupts (keyboard mailbox IRQs verified live). Two locked-sysreg
   writes in `aic_init_cpu` must be skipped on M4 raw-boot (flokli patch).

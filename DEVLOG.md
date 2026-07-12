@@ -16,8 +16,10 @@ long-term plan in `roadmap.md`; per-session write-ups in `done/`.
 | Linux `apple_wdt` takes over m1n1's watchdog | shell survives past the 20 s bite |
 | Remote reboot via `macvdmtool` | full autonomous reboot→chainload→boot→shell cycle |
 
-Blocked/active: full-pmgr DT hangs pre-console (see PMGR section). Parked:
-USB gadget console (EP0 dies post-enumeration; `done/2026-07-11-t6040-usb-gadget-plan.md`).
+Active: full PMGR topology boots reproducibly with a minimal raw-boot policy;
+upstream-shaped policy and exact dispext minimum remain (see PMGR section).
+Trackpad interface start is confirmed broken. Parked: USB gadget console (EP0
+dies post-enumeration; `done/2026-07-11-t6040-usb-gadget-plan.md`).
 
 ## Operating the rig
 
@@ -174,7 +176,28 @@ Linux `apple_wdt` takes over m1n1's WD1; BusyBox pings `/dev/watchdog0` every
 10 s. m1n1 arms WD1 for ~20 s on M4 before handoff (`src/kboot.c`,
 `src/wdt.c: wdt_arm_secs`) so hung kernels warm-reset back to "Running proxy".
 
-## PMGR investigation (sessions 2–3, 2026-07-11) — the active blocker's history
+## PMGR investigation (sessions 2–4, 2026-07-11/12)
+
+**Deterministic result (2026-07-12): the full 214-domain topology boots 3/3**
+with this minimal temporary raw-boot policy:
+- preserve every domain found active at probe (`apple,preserve-active` on all
+  four controllers);
+- disable only `disp_cpu`;
+- skip auto-enable on dispext0/1 `sys`, `fe`, and `cpu`.
+
+The legacy raw tree fails 3/3. The five ANE exclusions in the previous broad
+functional policy are unnecessary. Both dispext banks are required at current
+granularity. PMGR1 reparent-only fails while removal-only boots, proving that
+the old curated regression came from flattening, not class removal. Removing
+only AMCC/DCS/fabric/`soc_dpe` does not boot. Exact DTB hashes, negative controls,
+and caveats about invalid whole-controller deletion tests are in
+`done/2026-07-12-t6040-pmgr-matrix.md`.
+
+`pmgr_adt2dt.py` was fixed in m1n1 `5dc76503` (curated branch `effcc16c`):
+Apple `critical` no longer silently becomes Linux always-on policy, and parents
+with `no_ps` no longer produce dangling phandles.
+
+### Earlier blind investigation (historical context)
 
 The full generated four-controller/214-domain `t6040-pmgr.dtsi` hangs the
 kernel pre-console (inside apple-pmgr-pwrstate probe, before simpledrm).
