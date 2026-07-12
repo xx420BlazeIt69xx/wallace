@@ -163,7 +163,11 @@ booted to BusyBox. Two event0 opens independently returned `-ENOENT` for the
 missing blob; neither sent command `0x40`, timed out, nor left `starting` stuck.
 Use `TRACKPAD_FIRMWARE=... scripts/t6040-make-initramfs.sh` after extracting the
 paired file. GPIO proxying remains intentionally absent until any request and
-its J614s ADT mapping are captured and reviewed. Details:
+its J614s ADT mapping are captured and reviewed. A later ADT-only capture found
+`function-afe-reset = pKW4('gp1c', 0x10000)` through phandle 294,
+`/arm-io/smc/iop-smc-nub/smc-pmu`. The legacy pulse would write SMC key `gp1c`
+as `0x10001` then `0x10000`; do not implement or exercise it under the absolute
+no-PMU-write rule. Details:
 `done/2026-07-12-t6040-trackpad-firmware.md`.
 
 ### DockChannel-UART Linux console (2026-07-12)

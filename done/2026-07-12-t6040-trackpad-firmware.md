@@ -50,8 +50,10 @@ DT association and retry cleanup before using a proprietary blob.
    the current minimal initramfs; do not substitute a blob from another board.
 2. Rebuild the initramfs with `TRACKPAD_FIRMWARE=...`, boot, and open event0.
 3. If firmware upload exposes an MTP GPIO request, capture its interface, ID,
-   name, and command. The older proxy path resolves an ADT-described Apple
-   function through SMC, while this tree has no equivalent DT GPIO mapping.
-   Derive and review the exact J614s mapping before writes.
+   name, and command, but do not acknowledge it with a pulse. Read-only ADT
+   inspection has now resolved `function-afe-reset` to phandle 294,
+   `/arm-io/smc/iop-smc-nub/smc-pmu`, `pKW4('gp1c', 0x10000)`. The older proxy
+   would write SMC key `gp1c` as `0x10001` then `0x10000`. That is a PMU path,
+   and this project's non-negotiable rules prohibit the writes.
 4. Once motion reports flow, add the MTP IDs/report format to `hid-magicmouse`
    as needed and test haptics separately through the actuator interface.

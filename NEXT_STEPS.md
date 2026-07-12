@@ -15,9 +15,10 @@ live-tested in kernel build #12: repeated opens now independently request
 `-EINPROGRESS`. Extract the paired HIDF blob from this machine's macOS firmware
 with `asahi-fwextract`, rebuild the initramfs with
 `TRACKPAD_FIRMWARE=/path/to/tpmtfw-j614s.bin`, and retest motion. If MTP then
-requests its reset GPIO, derive that SMC/GPIO mapping from the J614s ADT before
-implementing the separately gated proxy path. No tactile click is expected yet
-(the haptic actuator is a separate interface). Full finding:
+requests its reset GPIO, stop: the now-derived `gp1c` function resolves through
+the ADT's `smc-pmu` node, and PMU writes are forbidden by the project rules.
+No tactile click is expected yet (the haptic actuator is a separate interface).
+Full finding:
 `done/2026-07-12-t6040-trackpad-firmware.md`.
 
 ## 2. Upstream-shape the proven full-PMGR policy
@@ -45,7 +46,8 @@ The live ADT storage map is captured and committed as disabled nodes (Linux
 `9cf4a92fa16f`): ANS ASC/mailbox, SART v3, NVMe/NVMMU, IRQs, and the two PMGR
 dependencies. This path uses SART, not DART. Build the deliberately separate
 candidate with `scripts/t6040-build-nvme-candidate.sh`; do **not** boot it until
-the maintainer approves the normal Apple NVMe driver writes summarized in
+the maintainer approves the separate `Image-nvme` plus DTB and the normal Apple
+NVMe driver writes summarized in
 `done/2026-07-13-t6040-nvme-map.md`. Then extend the initramfs with mount tools
 and enumerate the namespaces read-only before any filesystem work.
 

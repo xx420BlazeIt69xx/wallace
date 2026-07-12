@@ -194,6 +194,13 @@ if [ "${DOCKCHANNEL:-0}" = "1" ]; then
         -e HID -e HID_APPLE -e APPLE_DOCKCHANNEL \
         -e APPLE_DOCKCHANNEL_HID -e APPLE_DOCKCHANNEL_TTY
 fi
+if [ "${NVME:-0}" = "1" ]; then
+    # Gated ANS/NVMe first-probe image. These default to modules, but the
+    # minimal initramfs ships no modules, so make the storage stack built-in.
+    # The standard DT keeps all ANS nodes disabled; this alone probes nothing.
+    ./scripts/config --file .config \
+        -e BLOCK -e BLK_DEV_NVME -e NVME_APPLE -e APPLE_SART
+fi
 if [ "${GADGET:-0}" = "1" ]; then
     # USB gadget console: plain dwc3 core in peripheral mode (snps,dwc3 DT
     # nodes; the PHY stays as m1n1 configured it) + configfs ACM function.
@@ -218,6 +225,10 @@ grep -E "CONFIG_(WATCHDOG|APPLE_WATCHDOG)=" .config || true
 if [ "${DOCKCHANNEL:-0}" = "1" ]; then
     grep -E "CONFIG_(APPLE_MAILBOX|APPLE_RTKIT|APPLE_DART|HID_APPLE|APPLE_DOCKCHANNEL|APPLE_DOCKCHANNEL_HID)=" .config || true
 fi
+if [ "${NVME:-0}" = "1" ]; then
+    echo "-- resulting ANS/NVMe config --"
+    grep -E "CONFIG_(BLK_DEV_NVME|NVME_APPLE|APPLE_SART)=" .config || true
+fi
 grep -qE "CONFIG_ARM64_SME=y" .config && echo "WARN: SME still enabled!" || echo "SME disabled OK"
 
 NPROC=$(nproc)
@@ -239,9 +250,16 @@ fi
 if [ "${1:-}" = "image" ]; then
     echo "== build kernel Image (slow) =="
     make ARCH=arm64 -j"$NPROC" Image
-    cp arch/arm64/boot/Image /out/ && echo "Image -> /out/Image ($(du -h arch/arm64/boot/Image | cut -f1))"
+    image_name=Image
+    map_name=System.map
+    if [ "${NVME:-0}" = "1" ]; then
+        image_name=Image-nvme
+        map_name=System.map-nvme
+    fi
+    cp arch/arm64/boot/Image "/out/$image_name" \
+        && echo "Image -> /out/$image_name ($(du -h arch/arm64/boot/Image | cut -f1))"
     # System.map lets t6040-ramdump.py locate __log_buf for a post-mortem console
     # dump when the framebuffer stays blank (hang before simpledrm probes).
-    cp System.map /out/ && echo "System.map -> /out/System.map"
+    cp System.map "/out/$map_name" && echo "System.map -> /out/$map_name"
 fi
 echo "== done =="
