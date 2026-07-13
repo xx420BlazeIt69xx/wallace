@@ -1,7 +1,7 @@
 # AGENTS.md — Project Wallace (T6040 / M4 Pro Linux bring-up)
 
 The umbrella project for bringing mainline Linux to an **Apple MacBook Pro 14"
-M4 Pro (T6040 "Brava Chop", Mac16,8 / J614s)** — a real, tethered daily-driver
+M4 Pro (T6040 "Brava Chop", Mac14,8 / J614s)** — a real, tethered daily-driver
 machine. This repo holds all plans, documentation, host-side scripts, and
 kernel patches. The code lives in sibling repos under `~/Code/` (below).
 

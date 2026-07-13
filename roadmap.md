@@ -1,4 +1,4 @@
-# T6040 (M4 Pro, Mac16,8 / j614s) — roadmap: first light → full Linux desktop
+# T6040 (M4 Pro, Mac14,8 / j614s) — roadmap: first light → full Linux desktop
 
 End-goal: a bootable Linux distro on this MacBook Pro 14" M4 Pro with GPU accel,
 WiFi, Bluetooth, keyboard/trackpad, audio, webcam, power management — daily-driver
@@ -257,7 +257,7 @@ keyboard/trackpad, battery status. Daily-drivable without GPU/WiFi (USB ethernet
 ## Stage H — distro integration ("bootable Linux distro")
 
 - **asahi-installer:** must learn raw-boot-object enrollment for M4 (it enrolls
-  mach-o m1n1 today — that path is *gone* on this machine) + Mac16,8 device
+  mach-o m1n1 today — that path is *gone* on this machine) + Mac14,8 device
   metadata + firmware extraction for 26.x. This is a real, non-optional work item
   and mostly upstream-installer territory.
 - **U-Boot:** T6040 support (usually near-free once m1n1's FDT + dwc3 are right)

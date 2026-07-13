@@ -2,7 +2,7 @@
 
 *Draft for #asahi-dev — 2026-07-10. Review before posting.*
 
-Follow-up to the SMP/first-light work on the tethered t6040 (Mac16,8 / J614s,
+Follow-up to the SMP/first-light work on the tethered t6040 (Mac14,8 / J614s,
 chip-id 0x6040, raw-boot, macOS 26.x / mBoot-18000.121.3). Got `src/cpufreq.c`
 working for T6040, with one caveat worth flagging for anyone with M4 register-map
 knowledge.

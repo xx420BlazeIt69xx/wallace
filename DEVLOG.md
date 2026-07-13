@@ -1,4 +1,4 @@
-# t6040 (M4 Pro, Mac16,8 / J614s) Linux bring-up — DEVLOG & operational reference
+# t6040 (M4 Pro, Mac14,8 / J614s) Linux bring-up — DEVLOG & operational reference
 
 State of the world, how to operate the rig, solved blockers, investigation
 history, and dead ends. Forward-looking work lives in `NEXT_STEPS.md`; the
