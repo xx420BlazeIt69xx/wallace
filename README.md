@@ -29,7 +29,7 @@ Getting Linux onto it had a twist: the dockchannel's interrupt line on this die 
 ## The loop
 
 ```sh
-bash scripts/t6040-debugusb-console.sh reboot   # reboot the M4 into m1n1, attach kisd -> /tmp/m1n1
+bash scripts/t6040-debugusb-console.sh reboot   # reboot into m1n1, drain console, attach kisd -> /tmp/m1n1
 bash scripts/t6040-boot-dcuart.sh               # chainload m1n1 + boot Linux to a shell on /dev/ttydc0
 printf 'uname -a\n' > /tmp/m1n1                 # type into the running machine
 tail -f ~/Code/linux-build-out/dcuart-console.log

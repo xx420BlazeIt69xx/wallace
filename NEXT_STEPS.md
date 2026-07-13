@@ -74,10 +74,18 @@ live-verified. The last diagnostic reached BusyBox, but its log relay replayed
 historical PMGR output and the m1n1 proxy then remained unresponsive after the
 documented kisd/re-entry recovery. Stop live work until DebugUSB is healthy.
 
-After recovery, first run `stty -f /tmp/m1n1 raw -echo` on the fresh kisd PTY;
-the repeated proxy failure was a canonical-mode `VEOF` interception, not a new
-target fault. Then boot only the prepared trace set and relay new `trace:`
-lines, not the PMGR backlog:
+The recovery helper now makes the fresh kisd PTY raw and attaches its own
+reader before DebugUSB traffic. A later recovery confirmed the complete m1n1
+startup packet, but proxyclient then timed out while 3.2 KiB of historical
+Linux output remained queued. The next reboot stopped after iBoot Stage2, and
+then fell through to Apple's "macOS on the selected disk needs to be
+reinstalled" screen instead of launching m1n1. The following DebugUSB VDM
+failed; live work stopped with kisd detached. This proves only that Apple's
+boot chain identified the selected system volume, not that Linux NVMe ran.
+
+Run the recovery helper; it now requires a healthy `Running proxy` and three
+unchanged console-size samples before returning. Then boot only the prepared
+trace set and relay new `trace:` lines, not the historical PMGR backlog:
 
 - `Image-sart-trace`:
   `0c4880522c4793629f6e9a25ea164c911801e67754ae43cd3a6b5b274e20e8e6`;

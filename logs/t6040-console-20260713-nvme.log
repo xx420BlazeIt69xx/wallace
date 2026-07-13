@@ -77,3 +77,19 @@ t6040-j614s-dcuart-nvme-ans-hold.dtb
   cc2c48e30a09080117222d5f4c9fb795dfd6bb338d2cf26b23085ad947ffbefb
 initramfs-dcuart-nvme-ans-hold.cpio.gz
   ae80f82033e5f0d683ac09a3fa61e67c3c63e8a7c1be7593a0fd7fe687732873
+
+Authorized recovery retry
+-------------------------
+The next fresh reboot produced a complete raw-mode startup reply:
+
+  ff 55 aa 04 00 00 00 00 ... dc 92 9b f4
+
+Both proxy attempts still timed out. Reattaching a reader then drained 3277
+bytes of historical Linux #23 ANS-hold output, including the old shell's
+`cat /proc/kmsg` command; this was not a new boot. A second reboot stopped at
+the end of iBoot Stage2 (11259 bytes stable for 30 seconds) without reaching
+m1n1. A final fresh recovery failed at macvdmtool's DebugUSB VDM. kisd was
+stopped. The display showed Apple's "macOS on the selected disk needs to be
+reinstalled" screen: evidence that iBoot identified the system volume, not
+that Linux NVMe ran. No kernel handoff, module load, namespace access, or
+storage command occurred during these retries.

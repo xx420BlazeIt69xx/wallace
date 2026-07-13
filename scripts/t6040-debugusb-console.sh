@@ -6,7 +6,8 @@
 #   reboot    reboot the target and re-enter debugusb during boot
 #             (captures the full boot log including iBoot markers)
 #
-# Result: stable symlink /tmp/m1n1 -> kisd's pty. Use for everything:
+# Result: stable symlink /tmp/m1n1 -> kisd's pty, with a background reader
+# draining console output to /tmp/m1n1-console.log. Use for everything:
 #   export M1N1DEVICE=/tmp/m1n1     # proxyclient tools
 #   screen /tmp/m1n1                # interactive console
 #
@@ -33,8 +34,10 @@ done
 [ -n "$KISD" ] || { echo "kisd not found"; exit 1; }
 
 LOG="${TMPDIR:-/tmp}/kisd-console.log"
+CONSOLE_LOG=/tmp/m1n1-console.log
 
 # one kisd, freshly started, so the log and pty are always current
+pkill -f '^cat /tmp/m1n1$' 2>/dev/null || true
 pkill -x kisd 2>/dev/null && sleep 1
 # Detach from short-lived automation shells as well as interactive terminals;
 # otherwise their exit can reap kisd and leave /tmp/m1n1 dangling.
@@ -52,10 +55,55 @@ ln -sf "$PTY" /tmp/m1n1
 # to drain the text console but leaves the proxy protocol unusable.
 stty -f /tmp/m1n1 raw -echo
 
+: > "$CONSOLE_LOG"
+nohup cat /tmp/m1n1 >> "$CONSOLE_LOG" 2>/dev/null < /dev/null &
+READER_PID=$!
+echo "console reader pid $READER_PID -> $CONSOLE_LOG"
+
 if [ "$1" = "reboot" ]; then
-    sudo -n /usr/local/bin/macvdmtool reboot debugusb
+    if ! sudo -n /usr/local/bin/macvdmtool reboot debugusb; then
+        echo "ERROR: reboot/DebugUSB entry failed; reader remains attached"
+        exit 1
+    fi
+
+    proxy_ready=0
+    for ((i = 0; i < 25; i++)); do
+        if grep -a -q 'Running proxy' "$CONSOLE_LOG"; then
+            proxy_ready=1
+            break
+        fi
+        sleep 1
+    done
+    if [ "$proxy_ready" -ne 1 ]; then
+        echo "ERROR: m1n1 did not reach Running proxy within 25s; reader remains attached"
+        exit 1
+    fi
+
+    # Do not hand the PTY to proxyclient while old DockChannel output is still
+    # arriving. Three unchanged one-second samples bound the startup drain.
+    stable=0
+    last_size=-1
+    for ((i = 0; i < 10; i++)); do
+        size=$(wc -c < "$CONSOLE_LOG")
+        if [ "$size" -eq "$last_size" ]; then
+            stable=$((stable + 1))
+            [ "$stable" -ge 3 ] && break
+        else
+            stable=0
+            last_size=$size
+        fi
+        sleep 1
+    done
+    if [ "$stable" -lt 3 ]; then
+        echo "ERROR: console did not become quiescent; reader remains attached"
+        exit 1
+    fi
+    echo "m1n1 proxy ready; console quiescent at $last_size bytes"
 else
-    sudo -n /usr/local/bin/macvdmtool debugusb
+    if ! sudo -n /usr/local/bin/macvdmtool debugusb; then
+        echo "ERROR: DebugUSB entry failed; reader remains attached"
+        exit 1
+    fi
 fi
 
 sleep 3
@@ -67,5 +115,7 @@ fi
 
 echo
 echo "console/proxy: /tmp/m1n1 -> $PTY"
+echo "  reader: pid $READER_PID -> $CONSOLE_LOG"
 echo "  export M1N1DEVICE=/tmp/m1n1"
+echo "  stop reader pid $READER_PID before a manual proxyclient or screen session"
 echo "  screen /tmp/m1n1          # interactive console"

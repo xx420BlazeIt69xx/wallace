@@ -26,10 +26,12 @@ next. Parked: USB gadget console (EP0 dies post-enumeration;
 
 ### The DebugUSB (KIS) link
 
-`bash ~/Code/wallace/scripts/t6040-debugusb-console.sh [reboot]` — starts kisd, enters
-DebugUSB via `sudo -n macvdmtool [reboot] debugusb`, symlinks the kisd pty to
-`/tmp/m1n1`. `M1N1DEVICE=/tmp/m1n1` for all proxyclient tools; `screen /tmp/m1n1`
-for an interactive console. kisd auto-detects the t6040 KIS base 0x548700000;
+`bash ~/Code/wallace/scripts/t6040-debugusb-console.sh [reboot]` — starts kisd,
+sets its PTY raw, attaches a background reader to `/tmp/m1n1-console.log`,
+enters DebugUSB via `sudo -n macvdmtool [reboot] debugusb`, and symlinks the
+kisd pty to `/tmp/m1n1`. `M1N1DEVICE=/tmp/m1n1` for all proxyclient tools;
+`screen /tmp/m1n1` for an interactive console. kisd auto-detects the t6040 KIS
+base 0x548700000;
 kisd uart channel 0 = dock side of AP `/arm-io/dockchannel-uart` (AP data block
 0x50882c000 + 0x40004000 = 0x548830000; same offset on t8140).
 
@@ -45,7 +47,11 @@ kisd uart channel 0 = dock side of AP `/arm-io/dockchannel-uart` (AP data block
    (`ff 55 aa 04`) as VEOF. The exact signature is a ~15,044-byte log ending
    in only `ff 55 aa`, followed by proxy timeouts with zero reply bytes.
 2. **Never leave a `cat` running while a proxyclient tool uses the pty** — it
-   steals reply bytes. Sequence: kill reader → run tool → reattach reader.
+   steals reply bytes. The recovery helper now owns the initial reader;
+   `t6040-boot-dcuart.sh` kills it before proxyclient and reattaches after the
+   handoff. For manual tools: kill reader → run tool → reattach reader.
+   With `reboot`, the recovery helper does not return until it has seen
+   `Running proxy` and three unchanged one-second console-size samples.
 3. First proxy attempt after a boot often hits `UartCMDError` (desync from
    leftover console bytes) — **just retry once**.
 4. Reboot → "Running proxy" takes **<20 s**. Poll every 2–3 s; never wait minutes.
