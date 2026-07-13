@@ -239,14 +239,29 @@ driver confirmed its locked/refcounted protocol: repeatedly write `0`, delay
 write `1`, delay 100 us, and wait for readback `1`. This explains the reset:
 the old T6000 fallback read v3 entries while CoastGuard was inactive.
 
-Draft support is split into `patches/t8140-sart-power-bindings.patch` and
-`patches/t8140-sart-power-managed.patch`. It compiles, passes checkpatch, and
-the focused binding/node validation passes. It maps only the four-byte shared
-register, brackets the boot-entry scan, and holds an active reference for each
-live allow-list region. Do **not** boot it yet: the initial approval did not
-describe writes `0` and `1` at `0x20dcc13e8`; those require a separate explicit
-approval. After approval, retry SART-only, then full DT without loading NVMe,
-then load the staged modules and enumerate read-only. Never mount the SSD.
+The maintainer then approved the exact writes. A handshake-only image still
+reset, but a diagnostic that touched no SART MMIO booted. The real fix is
+`patches/t8140-sart-defer-scan.patch`: old SART variants scan at probe as
+before, while power-managed CoastGuard waits until its first client holds the
+complete ANS power context. The SART-only and full-module-unloaded gates both
+then reached BusyBox. `nvme-core.ko` loaded; `nvme-apple.ko` reset the target.
+
+Yielding phase checkpoints isolated that second reset to the first ANS ASC
+control read at `0x209600044`. The last line was `before ANS CPU control read`;
+no CoastGuard transition, SART entry access, or namespace command occurred.
+Read-only PMGR inspection after recovery showed firmware's ANS domain at
+`0x0f0000ff` (target/actual `0xf`, AUTO_ENABLE clear). The T6041 PMGR probe
+otherwise enables auto-PM before the module runs. The next diagnostic preserves
+that state through `patches/t6040-pmgr-ans-no-auto.patch` and the independent
+DT property variant `dts/t6040-j614s-dcuart-nvme-ans-hold.dts`.
+
+That hypothesis is compiled but not live-verified. The DT variant booted to
+BusyBox, then an over-broad `/proc/kmsg` relay replayed the old PMGR backlog;
+the next module result was not captured and the m1n1 proxy remained
+unresponsive after the documented kisd restart plus DebugUSB re-entry. Per the
+rig rule, live access stopped. Resume with the exact hashes in `NEXT_STEPS.md`
+after the transport is healthy, and filter only new `trace:` lines. Never mount
+the SSD.
 
 The remaining T8103 ANS2 fallback agrees with m1n1 on ASC v4, 64-entry linear
 queues, and functional ANS/NVMMU offsets. m1n1's historical TCB-status

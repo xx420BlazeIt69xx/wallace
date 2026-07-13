@@ -1,0 +1,63 @@
+T6040 J614s ANS/NVMe controlled probe -- 2026-07-13
+
+Safety result
+-------------
+No namespace appeared. No identify, partition, mount, repair, format, flush,
+filesystem, or other storage command was issued. The fatal boundary remained
+before CoastGuard, SART-entry, mailbox, and NVMe command traffic.
+
+Cumulative SART gates
+---------------------
+handshake-only SART probe: watchdog reset before userspace
+zero-MMIO SART probe:      reached BusyBox
+
+[    0.145511] apple-sart 20dc50000.iommu: deferred-probe diagnostic; all SART MMIO skipped
+
+deferred protected-entry scan, SART-only DT: reached BusyBox
+deferred protected-entry scan, full DT/modules unloaded: reached BusyBox
+nvme-core.ko: loaded, rc=0
+nvme-apple.ko: watchdog reset
+
+Yielding NVMe phase trace
+-------------------------
+[100.830141] nvme-apple 20dcc0000.nvme: trace: platform probe entered
+[100.936673] nvme-apple 20dcc0000.nvme: trace: allocation entered
+[101.040735] nvme-apple 20dcc0000.nvme: trace: power domains attached
+[101.144709] nvme-apple 20dcc0000.nvme: trace: MMIO resources mapped
+[101.248723] nvme-apple 20dcc0000.nvme: trace: SART supplier acquired
+[101.356801] nvme-apple 20dcc0000.nvme: trace: queues allocated
+[101.460793] nvme-apple 20dcc0000.nvme: trace: RTKit client initialized
+[101.564680] nvme-apple 20dcc0000.nvme: trace: NVMe controller object initialized
+[101.668752] nvme-apple 20dcc0000.nvme: trace: reset work queued
+[101.669750] nvme-apple 20dcc0000.nvme: trace: reset work entered
+[101.772796] nvme-apple 20dcc0000.nvme: trace: before ANS CPU control read
+
+The next instruction is the first read of ASC CPU_CONTROL at physical
+0x209600044. The target reset there.
+
+Read-only PMGR state captured through m1n1
+------------------------------------------
+ANS            @ 0x502280370 = 0x0f0000ff
+  FAB3_SOC      @ 0x502280118 = 0x0f0000ff
+    AFC         @ 0x502800178 = 0x1f0000ff
+APCIE_SYS_ST0  @ 0x502280380 = 0x1000030f
+APCIE_SYS_ST1  @ 0x502280388 = 0x1000030f
+APCIE_PHY_SW   @ 0x502280398 = 0x1400024f
+
+ANS is target/actual 0xf with AUTO_ENABLE clear in firmware state. The
+prepared retry keeps it out of generic auto-PM before the first ASC access.
+
+ANS-hold diagnostic status
+--------------------------
+The DT-property variant reached BusyBox. An over-broad /proc/kmsg filter then
+replayed historical PMGR output, so the module result did not drain before the
+transport disconnected. The m1n1 proxy remained unresponsive after the
+documented kisd restart and explicit DebugUSB re-entry. Live work stopped.
+
+Prepared but unbooted as a set:
+Image-sart-trace
+  0c4880522c4793629f6e9a25ea164c911801e67754ae43cd3a6b5b274e20e8e6
+t6040-j614s-dcuart-nvme-ans-hold.dtb
+  cc2c48e30a09080117222d5f4c9fb795dfd6bb338d2cf26b23085ad947ffbefb
+initramfs-dcuart-nvme-ans-hold.cpio.gz
+  ae80f82033e5f0d683ac09a3fa61e67c3c63e8a7c1be7593a0fd7fe687732873

@@ -49,35 +49,46 @@ Done this session: raw determinism, requested core-infra and PMGR1 isolations,
 live ADT regeneration, `no_ps` parent filtering, and safe always-on generation
 (no policy by default; explicit legacy flag only).
 
-## 3. Approve the CoastGuard SART power write, then resume NVMe
-The approved first probe did not reach NVMe enumeration. Both the built-in
-candidate and a staged candidate with `nvme-apple` still unloaded reset before
-userspace. A cumulative DT bisection proved that the ASC mailbox alone boots,
-while adding SART (with NVMe disabled) reproduces the reset. No disk command
-was issued and no namespace was mounted or written.
+## 3. Restore DebugUSB, test the ANS PMGR hold, then resume NVMe
+The maintainer approved the exact CoastGuard writes. The retry established two
+separate boundaries:
 
-Read-only ADT inspection then found the missing hardware contract:
-`/arm-io/sart-ans` is a power-managed CoastGuard SART. Its control is ADT reg 2
-plus `sart-power-reg-offset = 0x13e8`, exactly `0x20dcc13e8`. Static analysis of
-the paired Apple kernel established the protocol: while holding a lock and
-reference count, write `0`, delay 100 us, and retry until the register reads
-`0` to activate; on the last release write `1`, delay 100 us, and retry until
-it reads `1`. The existing Linux fallback read inactive SART entries and caused
-the reset.
+1. A handshake-only SART probe still reset, while a zero-MMIO SART probe booted.
+   `patches/t8140-sart-defer-scan.patch` now defers the protected-entry scan
+   until the first client has the complete ANS power context. With that fix,
+   both the SART-only DT and the full DT with `nvme-apple` unloaded reached
+   BusyBox.
+2. Loading `nvme-core.ko` succeeded. Loading `nvme-apple.ko` reset the target.
+   Yielding phase checkpoints made the exact last successful point
+   `before ANS CPU control read`; the fatal operation is the first read of
+   `0x209600044`, before any CoastGuard write, SART entry access, or namespace
+   command.
 
-Draft bindings and driver support are in
-`patches/t8140-sart-power-bindings.patch` and
-`patches/t8140-sart-power-managed.patch`; both compile, the focused schema
-passes, and checkpatch is clean. A staged SART-only retry artifact is built,
-but **must not be booted until the maintainer separately approves the newly
-discovered writes to `0x20dcc13e8` with values `0` and `1`**. The earlier NVMe
-approval did not describe this register.
+Read-only ADT-derived PMGR inspection found that firmware leaves `ANS` at
+`0x0f0000ff`: target and actual state `0xf`, with AUTO_ENABLE clear. Linux's
+T6041 PMGR probe otherwise enables automatic gating before the NVMe module's
+first access. `patches/t6040-pmgr-ans-no-auto.patch` adds an NVMe-only build
+exception, and `dts/t6040-j614s-dcuart-nvme-ans-hold.dts` independently selects
+the same existing bring-up policy. Both compile; the hypothesis is not yet
+live-verified. The last diagnostic reached BusyBox, but its log relay replayed
+historical PMGR output and the m1n1 proxy then remained unresponsive after the
+documented kisd/re-entry recovery. Stop live work until DebugUSB is healthy.
 
-After approval, proceed cumulatively: SART-only DT first; then full DT with the
-NVMe module still unloaded; only then load `nvme-core.ko` and `nvme-apple.ko`
-and run the read-only enumeration transcript in
-`done/2026-07-13-t6040-nvme-map.md`. Never mount, repair, format, flush, or write
-the namespace during this probe.
+After recovery, boot only the prepared trace set and relay new `trace:` lines,
+not the PMGR backlog:
+
+- `Image-sart-trace`:
+  `0c4880522c4793629f6e9a25ea164c911801e67754ae43cd3a6b5b274e20e8e6`;
+- `t6040-j614s-dcuart-nvme-ans-hold.dtb`:
+  `cc2c48e30a09080117222d5f4c9fb795dfd6bb338d2cf26b23085ad947ffbefb`;
+- `initramfs-dcuart-nvme-ans-hold.cpio.gz`:
+  `ae80f82033e5f0d683ac09a3fa61e67c3c63e8a7c1be7593a0fd7fe687732873`.
+
+Load `nvme-core.ko`, then `nvme-apple.ko`. If the trace passes the CPU-control
+read, continue phase by phase. Enumerate read-only only after controller boot;
+never mount, repair, format, flush, or write the namespace. Full evidence and
+the eventual enumeration transcript are in
+`done/2026-07-13-t6040-nvme-map.md`.
 
 ## 4. Upstream / share
 - Post the drafted writeups: `done/2026-07-10-t6040-smp-writeup.md`,
