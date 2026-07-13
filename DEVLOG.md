@@ -214,33 +214,44 @@ not reuse of `apple_dctty_write()`.
 Read-only live ADT inspection established the T6040 storage layout: ASC control
 `0x209600000`, mailbox `0x209608000` (IRQs 1530–1533 after normalizing Apple's
 pair order), SART v3 `0x20dc50000`, and NVMe/NVMMU `0x20dcc0000` (IRQ 2583).
-Storage uses SART plus the embedded NVMMU, not DART. Disabled nodes are committed
-in Linux `9cf4a92fa16f`; the standard DT therefore performs no new accesses.
+Storage uses SART plus the embedded NVMMU, not DART. Disabled nodes are
+committed in Linux `9cf4a92fa16f`; the standard DT performs no new accesses.
 
 `scripts/t6040-build-nvme-candidate.sh` builds a separate, conspicuously named
-first-probe DTB. Do not boot it without maintainer approval: enabling it invokes
-normal but not-yet-exercised T6040 PMGR, SART, ASC, and NVMe writes. Exact map,
-candidate hash, and write classes: `done/2026-07-13-t6040-nvme-map.md`.
+first-probe DTB and supports both built-in and staged-module images. Exact map,
+artifact hashes, write classes, and probe transcript:
+`done/2026-07-13-t6040-nvme-map.md`.
 
-The candidate was rebuilt after the build #15 diagnostic cleanup. It leaves the
-known-good `Image` and standard DTB byte-identical, has the NVMe/SART drivers
-built in, and contains no `MTPDBG` strings. The live initramfs BusyBox provides
-`fdisk`, `hexdump`, `mdev`, `find`, `mount`, and `umount`; `blkid` is absent.
-That is enough to inspect sysfs, `/proc/partitions`, and partition tables in an
-enumeration-only first probe, with no initramfs rebuild or mount required.
+The maintainer approved the initial full built-in probe. It handed off, then
+reset before userspace. A staged image with `nvme-apple` still unloaded failed
+identically, proving that the failure preceded NVMe. Cumulative DTs made the
+boundary exact: ASC mailbox alone boots to BusyBox; adding SART while keeping
+NVMe disabled resets before userspace. No disk command ran, no namespace was
+mounted or written, and the machine was returned to the standard build #15
+BusyBox image.
 
-The T8140 WIP compatible strings reused for this path were initially absent
-from the in-tree schemas. `patches/t8140-ans-bindings.patch` documents the ASC
-v4 mailbox, SART v3, and T8103-compatible ANS2 combinations. All three schemas
-and checkpatch pass; `CHECK_DTBS=y` then reports no storage-node warnings for
-the candidate. Other platform/AIC/watchdog/DockChannel warnings predate ANS.
+A second proxy-only ADT dump exposed the missing contract on `/arm-io/sart-ans`:
+`compatible = "sart", "coastguard"`, `sart-power-managed`, reg 2 at
+`0x20dcc0000`, and `sart-power-reg-offset = 0x13e8`. The exact power register is
+therefore `0x20dcc13e8`. Static analysis of the paired macOS 26.5.2 AppleSART
+driver confirmed its locked/refcounted protocol: repeatedly write `0`, delay
+100 us, and wait for readback `0` to activate; on the last release repeatedly
+write `1`, delay 100 us, and wait for readback `1`. This explains the reset:
+the old T6000 fallback read v3 entries while CoastGuard was inactive.
 
-A source audit found the T8103 fallbacks agree with m1n1 on ASC v4, SART v3,
-64-entry linear queues, and all functional ANS/NVMMU offsets. m1n1's historical
-TCB-status diagnostic read is `0x29120` versus Linux's `0x28120`; both values
-predate T6040, and the read only warns after invalidation. Treat it as an
-upstream discrepancy to resolve from a reviewed register source, not by live
-probing, and do not expand the approved first-probe write set for it.
+Draft support is split into `patches/t8140-sart-power-bindings.patch` and
+`patches/t8140-sart-power-managed.patch`. It compiles, passes checkpatch, and
+the focused binding/node validation passes. It maps only the four-byte shared
+register, brackets the boot-entry scan, and holds an active reference for each
+live allow-list region. Do **not** boot it yet: the initial approval did not
+describe writes `0` and `1` at `0x20dcc13e8`; those require a separate explicit
+approval. After approval, retry SART-only, then full DT without loading NVMe,
+then load the staged modules and enumerate read-only. Never mount the SSD.
+
+The remaining T8103 ANS2 fallback agrees with m1n1 on ASC v4, 64-entry linear
+queues, and functional ANS/NVMMU offsets. m1n1's historical TCB-status
+diagnostic read remains `0x29120` versus Linux's `0x28120`; resolve that from a
+reviewed source, never by probing either offset live.
 
 ### Watchdog (2026-07-11)
 Linux `apple_wdt` takes over m1n1's WD1; BusyBox pings `/dev/watchdog0` every

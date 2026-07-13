@@ -49,19 +49,35 @@ Done this session: raw determinism, requested core-infra and PMGR1 isolations,
 live ADT regeneration, `no_ps` parent filtering, and safe always-on generation
 (no policy by default; explicit legacy flag only).
 
-## 3. Approve and run the first ANS/NVMe probe
-The live ADT storage map is captured and committed as disabled nodes (Linux
-`9cf4a92fa16f`): ANS ASC/mailbox, SART v3, NVMe/NVMMU, IRQs, and the two PMGR
-dependencies. This path uses SART, not DART. Build the deliberately separate
-candidate with `scripts/t6040-build-nvme-candidate.sh`; the current candidate
-is built and verified, but do **not** boot it until the maintainer approves the
-separate `Image-nvme` plus DTB and the normal Apple NVMe driver writes
-summarized in `done/2026-07-13-t6040-nvme-map.md`. The existing BusyBox already
-provides `fdisk`, `hexdump`, `mdev`, `find`, `mount`, and `umount` (but not
-`blkid`), so no userspace rebuild is needed for the enumeration-only first
-probe. `patches/t8140-ans-bindings.patch` covers the three provisional storage
-compatibles and passes their schemas. Do not mount a namespace during the
-probe.
+## 3. Approve the CoastGuard SART power write, then resume NVMe
+The approved first probe did not reach NVMe enumeration. Both the built-in
+candidate and a staged candidate with `nvme-apple` still unloaded reset before
+userspace. A cumulative DT bisection proved that the ASC mailbox alone boots,
+while adding SART (with NVMe disabled) reproduces the reset. No disk command
+was issued and no namespace was mounted or written.
+
+Read-only ADT inspection then found the missing hardware contract:
+`/arm-io/sart-ans` is a power-managed CoastGuard SART. Its control is ADT reg 2
+plus `sart-power-reg-offset = 0x13e8`, exactly `0x20dcc13e8`. Static analysis of
+the paired Apple kernel established the protocol: while holding a lock and
+reference count, write `0`, delay 100 us, and retry until the register reads
+`0` to activate; on the last release write `1`, delay 100 us, and retry until
+it reads `1`. The existing Linux fallback read inactive SART entries and caused
+the reset.
+
+Draft bindings and driver support are in
+`patches/t8140-sart-power-bindings.patch` and
+`patches/t8140-sart-power-managed.patch`; both compile, the focused schema
+passes, and checkpatch is clean. A staged SART-only retry artifact is built,
+but **must not be booted until the maintainer separately approves the newly
+discovered writes to `0x20dcc13e8` with values `0` and `1`**. The earlier NVMe
+approval did not describe this register.
+
+After approval, proceed cumulatively: SART-only DT first; then full DT with the
+NVMe module still unloaded; only then load `nvme-core.ko` and `nvme-apple.ko`
+and run the read-only enumeration transcript in
+`done/2026-07-13-t6040-nvme-map.md`. Never mount, repair, format, flush, or write
+the namespace during this probe.
 
 ## 4. Upstream / share
 - Post the drafted writeups: `done/2026-07-10-t6040-smp-writeup.md`,

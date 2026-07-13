@@ -4,8 +4,8 @@ End-goal: a bootable Linux distro on this MacBook Pro 16" M4 Pro with GPU accel,
 WiFi, Bluetooth, keyboard/trackpad, audio, webcam, power management — daily-driver
 comfort comparable to macOS.
 
-Written 2026-07-10, last updated **2026-07-13** (post PMGR/ANS preparation
-session). Companion docs: `NEXT_STEPS.md` (immediate work), `DEVLOG.md`
+Written 2026-07-10, last updated **2026-07-13** (post first ANS/SART probe).
+Companion docs: `NEXT_STEPS.md` (immediate work), `DEVLOG.md`
 (operational reference + solved blockers), `t6040-dt-checklist.md` (Stage C
 reference). All finished per-topic plans/write-ups archived in `done/`.
 Unposted #asahi-dev drafts awaiting review: `done/2026-07-10-t6040-smp-writeup.md`,
@@ -42,7 +42,7 @@ fixed, dapf gate + watchdog arm added for M4.
 | BusyBox userspace; full PMGR with property-free T6041 quirk, reproducible | PMGR draft review/submission (split, checkpatch/schema-clean; NEXT_STEPS #2) |
 | Internal keyboard at the shell; trackpad registers + validated firmware-loader path | Target ESP's paired trackpad blob; PMU-backed reset remains forbidden; maxcpus>1/idle states |
 | Two-way Linux shell + m1n1 proxy over one DebugUSB cable; remote reboot | Printk over ttydc needs a separate polled/atomic TX path; current TTY queue is not console-safe |
-| Linux apple_wdt; fbcon early console | NVMe rootfs (candidate built/schema-checked; first hardware probe gated) |
+| Linux apple_wdt; fbcon early console | NVMe rootfs (first probe isolated CoastGuard SART power gate; exact retry write awaiting approval) |
 | Kernel build env (podman, arm64-native) with patch pipeline | USB gadget console (parked: EP0 dies post-enumeration) |
 | SMP/cpufreq/MCC/PCIe m1n1 groundwork (Stage B) | cpufreq throttles, PCIe link-up test, USB3/TB PHY tunables |
 
@@ -177,8 +177,10 @@ maxcpus>1 + cpufreq DT wiring.
 
 *The "it's a real computer now" stage. Weeks.*
 
-- **NVMe** (apple-nvme + SART + ANS RTKit): internal SSD. Gate for installing
-  a rootfs on disk.
+- **NVMe** (apple-nvme + SART + ANS RTKit): internal SSD. The first controlled
+  probe isolated a pre-NVMe reset to the T8140 CoastGuard SART's missing power
+  lifecycle. Draft support is compile/schema-clean; its exact control-register
+  write is separately approval-gated (NEXT_STEPS #3).
 - **USB** (dwc3 + ATC PHY): external keyboard/disk/ethernet from day one; also
   the USB-gadget console m1n1 already proves works.
 - **Internal keyboard + trackpad:** ✅ **keyboard DONE early (2026-07-11)** via
