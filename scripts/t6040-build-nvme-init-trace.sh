@@ -20,6 +20,7 @@ podman exec \
     -e NVME_ANS_READ=1 \
     -e NVME_FORCE_CONTINUE=1 \
     -e NVME_INIT_TRACE=1 \
+    -e NVME_REGISTER_TRACE=1 \
     -e BUILD_DIR="$BUILD_DIR" \
     kbuild bash /out/t6040-kbuild.sh image
 

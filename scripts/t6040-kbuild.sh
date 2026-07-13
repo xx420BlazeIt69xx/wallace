@@ -69,9 +69,24 @@ else
     sed -n '/EL2-only (VHE mode)/,/PMC FIQ/p' drivers/irqchip/irq-apple-aic.c
     exit 1
 fi
+echo "== skip T6040 locked vGIC maintenance register write =="
+if sed -n '/static int aic_init_cpu/,/PMC FIQ/p' \
+       drivers/irqchip/irq-apple-aic.c | \
+       grep -q '^\s*/\* sysreg_clear_set_s(SYS_ICH_HCR_EL2'; then
+    echo "t6040-aic-hcr-debug.patch already applied"
+elif git apply --check /out/t6040-aic-hcr-debug.patch 2>/dev/null; then
+    git apply /out/t6040-aic-hcr-debug.patch
+    echo "t6040-aic-hcr-debug.patch applied OK"
+else
+    echo "ERROR: t6040-aic-hcr-debug.patch does not apply cleanly:"
+    git apply --check /out/t6040-aic-hcr-debug.patch || true
+    exit 1
+fi
+
 echo "-- verify the two traps are gone from aic_init_cpu --"
 if sed -n '/static int aic_init_cpu/,/PMC FIQ/p' drivers/irqchip/irq-apple-aic.c | grep -qE "^\s*sysreg_clear_set_s\(SYS_(IMP_APL_VM_TMR_FIQ_ENA|ICH_HCR)_EL2"; then
-    echo "WARN: a locked-sysreg write is still active in aic_init_cpu!"
+    echo "ERROR: a locked-sysreg write is still active in aic_init_cpu!"
+    exit 1
 else
     echo "aic_init_cpu locked-sysreg writes disabled OK"
 fi
@@ -418,6 +433,27 @@ if [ "${NVME_INIT_TRACE:-0}" = "1" ]; then
         git apply --check /out/t6040-nvme-init-trace-debug.patch || true
         exit 1
     fi
+fi
+
+if [ "${NVME_REGISTER_TRACE:-0}" = "1" ]; then
+    [ "${NVME_INIT_TRACE:-0}" = "1" ] || {
+        echo "ERROR: NVME_REGISTER_TRACE=1 requires NVME_INIT_TRACE=1"
+        exit 1
+    }
+    echo "== apply individual post-ANS register trace =="
+    if grep -q 'preserving firmware-owned linear queue' drivers/nvme/host/apple.c; then
+        echo "t6040-nvme-register-trace-debug.patch already applied"
+    elif git apply --check /out/t6040-nvme-register-trace-debug.patch 2>/dev/null; then
+        git apply /out/t6040-nvme-register-trace-debug.patch
+        echo "t6040-nvme-register-trace-debug.patch applied OK"
+    else
+        echo "ERROR: t6040-nvme-register-trace-debug.patch does not apply cleanly:"
+        git apply --check /out/t6040-nvme-register-trace-debug.patch || true
+        exit 1
+    fi
+elif grep -q 'preserving firmware-owned linear queue' drivers/nvme/host/apple.c; then
+    echo "== remove individual post-ANS register trace =="
+    git apply -R /out/t6040-nvme-register-trace-debug.patch
 fi
 
 if [ "${PMGR_FUNCTIONAL:-0}" = "1" ]; then

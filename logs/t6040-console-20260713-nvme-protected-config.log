@@ -1,0 +1,74 @@
+T6040/J614s protected ANS register boundary, 2026-07-13
+========================================================
+
+All addresses below are the translated physical main NVMe BAR at
+0x40dcc0000 plus offsets taken from drivers/nvme/host/apple.c and the J614s
+AppleANS3 driver path.  The target was at a clean m1n1 EL2 proxy after a
+DebugUSB reboot.  No storage commands were submitted.
+
+1. Legacy linear-SQ control, read then same-value write
+
+    address: 0x40dce4908 (BAR + 0x24908)
+    read32:  0x00000001
+    write32: 0x00000001
+
+The read succeeded.  Rewriting the already-set value raised an SError:
+
+    FAR:         0x40dce4908
+    ESR:         0xbe000000 (SError)
+    L2C_ERR_STS: 0x80
+    L2C_ERR_ADR: 0x28360040dce4908
+    L2C_ERR_INF: 0x1400000001
+
+Conclusion: iBoot leaves legacy linear-SQ mode enabled, but this raw-boot
+environment cannot write the firmware/SPTM-owned register.  The Linux write
+is redundant and is the exact first fault in apple_nvme_reset_work().
+
+2. Maximum-pending-command control, one read
+
+    address: 0x40dcc1210 (BAR + 0x1210)
+
+The read itself raised the same class of L2C access fault before a value was
+returned:
+
+    FAR:         0x40dcc1210
+    ESR:         0x96000410 (data abort), followed by SError
+    L2C_ERR_STS: 0x80
+    L2C_ERR_ADR: 0x30160040dcc1210
+    L2C_ERR_INF: 0x1400000001
+
+No further direct register reads were attempted.  This establishes that the
+T8140 static linear-SQ/NVMMU setup must be preserved rather than inspected or
+rewritten from raw-boot Linux.  Dynamic queue register programming remains to
+be tested through the driver with one trace checkpoint per existing access.
+
+3. Linux preservation run
+
+The T8140-specific driver match skipped the complete static setup block and
+continued normally through ANS/RTKit readiness.  Its last two checkpoints
+were:
+
+    trace: preserving firmware-owned linear queue and NVMMU setup
+    trace: before admin queue attributes write
+
+No checkpoint after the AQA write appeared.  Therefore the normal main-BAR
+write of `0x00010001` to `0x40dcc0024` is the next exact access fault.
+
+4. Secure BAR read-only snapshot
+
+ADT reg[9], selected by Apple's `nvme-secure-bar` property, translates to a
+separate 64 KiB window at `0x44dcc0000`.  The corresponding standard NVMe
+registers are readable there:
+
+    AQA  (secure BAR + 0x24): 0x000f000f
+    ASQ  (secure BAR + 0x28): 0x00000101005db000
+    ACQ  (secure BAR + 0x30): 0x00000101005dc000
+    CC   (secure BAR + 0x14): 0x00474000
+    CSTS (secure BAR + 0x1c): 0x00000000
+
+The queue addresses belong to firmware and cannot be reused for Linux DMA.
+AppleANS2CGv2Controller::SetupAdminQueue() handles this mode through provider
+platform operation `0x8027`, passing a 32-byte structure containing queue
+depths plus ASQ/ACQ physical addresses, instead of writing AQA/ASQ/ACQ
+directly.  The Linux path now needs the equivalent T8140 SPTM operation; no
+secure-BAR write was attempted.

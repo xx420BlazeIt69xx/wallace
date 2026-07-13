@@ -2,33 +2,6 @@ flokli j773s t6040 bring-up: CODE patches only (patches 1 & 2 of 3).
 Patch 3 (flokli's DT) is intentionally omitted - we keep our own ADT-verified
 t6040 DTs. See scratchpad/flokli-j773s.patch for the original.
 
-diff --git a/drivers/irqchip/irq-apple-aic.c b/drivers/irqchip/irq-apple-aic.c
-index 4a3141d9f91416..99bf58f71469e3 100644
---- a/drivers/irqchip/irq-apple-aic.c
-+++ b/drivers/irqchip/irq-apple-aic.c
-@@ -869,14 +869,14 @@ static int aic_init_cpu(unsigned int cpu)
- 	sysreg_clear_set(cntv_ctl_el0, 0, ARCH_TIMER_CTRL_IT_MASK);
-
- 	/* EL2-only (VHE mode) IRQ sources */
--	if (is_kernel_in_hyp_mode()) {
--		/* Guest timers */
--		sysreg_clear_set_s(SYS_IMP_APL_VM_TMR_FIQ_ENA_EL2,
--				   VM_TMR_FIQ_ENABLE_V | VM_TMR_FIQ_ENABLE_P, 0);
--
--		/* vGIC maintenance IRQ */
--		sysreg_clear_set_s(SYS_ICH_HCR_EL2, ICH_HCR_EL2_En, 0);
--	}
-+	//if (is_kernel_in_hyp_mode()) {
-+	//	/* Guest timers */
-+	//	sysreg_clear_set_s(SYS_IMP_APL_VM_TMR_FIQ_ENA_EL2,
-+	//			   VM_TMR_FIQ_ENABLE_V | VM_TMR_FIQ_ENABLE_P, 0);
-+
-+	//	/* vGIC maintenance IRQ */
-+	//	sysreg_clear_set_s(SYS_ICH_HCR_EL2, ICH_HCR_EL2_En, 0);
-+	//}
-
- 	/* PMC FIQ */
- 	sysreg_clear_set_s(SYS_IMP_APL_PMCR0_EL1, PMCR0_IMODE | PMCR0_IACT,
 diff --git a/arch/arm64/kernel/idle.c b/arch/arm64/kernel/idle.c
 index 05cfb347ec2679..c79de1fd97b47a 100644
 --- a/arch/arm64/kernel/idle.c

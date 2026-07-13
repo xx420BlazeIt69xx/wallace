@@ -1,0 +1,84 @@
+From: Carl Joakim Damsleth <kim@damsleth.com>
+Subject: [PATCH DEBUG] nvme: apple: preserve protected T8140 setup
+
+The T8140 ANS register layout exposes the normal NVMe queue registers but
+protects the legacy static linear-SQ/NVMMU setup.  On J614s, iBoot leaves the
+linear-SQ enable bit set; reading MAX_PEND at the driver-defined offset and
+even rewriting the already-set linear-SQ bit both raise an L2C access fault.
+
+Match T8140 explicitly and preserve that firmware-owned static setup.  Add
+yielding checkpoints around each following dynamic queue register write so a
+bounded target run can identify the next access boundary.  This is a
+bring-up patch and depends on t6040-nvme-init-trace-debug.patch.  Do not
+submit it in this form.
+
+Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+---
+diff --git a/drivers/nvme/host/apple.c b/drivers/nvme/host/apple.c
+index bb7fc7f..f81a2bc 100644
+--- a/drivers/nvme/host/apple.c
++++ b/drivers/nvme/host/apple.c
+@@ -171,6 +171,7 @@ struct apple_nvme_iod {
+ 
+ struct apple_nvme_hw {
+ 	bool has_lsq_nvmmu;
++	bool preserve_boot_config;
+ 	u32 max_queue_depth;
+ };
+ 
+@@ -1273,7 +1274,10 @@ static void apple_nvme_reset_work(struct work_struct *work)
+ 	dma_set_max_seg_size(anv->dev, 0xffffffff);
+ 
+ 	apple_nvme_trace(anv->dev, "before linear queue and NVMMU setup");
+-	if (anv->hw->has_lsq_nvmmu) {
++	if (anv->hw->has_lsq_nvmmu && anv->hw->preserve_boot_config) {
++		apple_nvme_trace(anv->dev,
++				 "preserving firmware-owned linear queue and NVMMU setup");
++	} else if (anv->hw->has_lsq_nvmmu) {
+ 		/*
+ 		 * Enable NVMMU and linear submission queues which is required
+ 		 * since T6000.
+@@ -1307,17 +1311,23 @@ static void apple_nvme_reset_work(struct work_struct *work)
+ 	/* Setup the admin queue */
+ 	aqa = APPLE_NVME_AQ_DEPTH - 1;
+ 	aqa |= aqa << 16;
++	apple_nvme_trace(anv->dev, "before admin queue attributes write");
+ 	writel(aqa, anv->mmio_nvme + NVME_REG_AQA);
++	apple_nvme_trace(anv->dev, "admin queue attributes programmed");
+ 	writeq(anv->adminq.sq_dma_addr, anv->mmio_nvme + NVME_REG_ASQ);
++	apple_nvme_trace(anv->dev, "admin submission queue base programmed");
+ 	writeq(anv->adminq.cq_dma_addr, anv->mmio_nvme + NVME_REG_ACQ);
+-
+ 	apple_nvme_trace(anv->dev, "admin queue registers programmed");
+ 	if (anv->hw->has_lsq_nvmmu) {
+ 		/* Setup NVMMU for both queues */
+ 		writeq(anv->adminq.tcb_dma_addr,
+ 			anv->mmio_nvme + APPLE_NVMMU_ASQ_TCB_BASE);
++		apple_nvme_trace(anv->dev,
++				 "admin NVMMU TCB base programmed");
+ 		writeq(anv->ioq.tcb_dma_addr,
+ 			anv->mmio_nvme + APPLE_NVMMU_IOSQ_TCB_BASE);
++		apple_nvme_trace(anv->dev,
++				 "I/O NVMMU TCB base programmed");
+ 	}
+ 
+ 	apple_nvme_trace(anv->dev, "NVMMU queue bases programmed");
+@@ -1698,9 +1709,16 @@ static const struct apple_nvme_hw apple_nvme_t8103_hw = {
+ 	.max_queue_depth = 64,
+ };
+ 
++static const struct apple_nvme_hw apple_nvme_t8140_hw = {
++	.has_lsq_nvmmu = true,
++	.preserve_boot_config = true,
++	.max_queue_depth = 64,
++};
++
+ static const struct of_device_id apple_nvme_of_match[] = {
+ 	{ .compatible = "apple,t8015-nvme-ans2", .data = &apple_nvme_t8015_hw },
+ 	{ .compatible = "apple,t8103-nvme-ans2", .data = &apple_nvme_t8103_hw },
++	{ .compatible = "apple,t8140-nvme-ans2", .data = &apple_nvme_t8140_hw },
+ 	{ .compatible = "apple,nvme-ans2", .data = &apple_nvme_t8103_hw },
+ 	{},
+ };
+-- 
+2.50.1
