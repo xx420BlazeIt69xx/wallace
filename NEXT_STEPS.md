@@ -211,12 +211,29 @@ Prepared artifacts:
 - `nvme-apple-pmgr-force-active.ko`:
   `d18f2a2a25116d8ba4aaa054431217bd6123cd36b6eae1afbf8a78e0dbc5858d`.
 
-Run one current-boot trace-relay attempt. Do not retry the ANS read in this
-step. If all three transitions reach actual `f` and the target remains alive,
-a separately reviewed one-read retry becomes justified. Never mount, repair,
-format, flush, or write the namespace. Full evidence is in
-`done/2026-07-13-t6040-nvme-map.md`; the prior exact transcript is
-`logs/t6040-console-20260713-nvme-pmgr-snapshot.log`.
+The single force-active attempt is complete. Linux #26 reached BusyBox and all
+three expected callbacks succeeded. The verified changes were:
+
+```text
+apcie_phy_sw   0x1400024f -> 0x0f0002ff  actual 4 -> f  auto 1 -> 0
+apcie_sys_st0  0x1000030f -> 0x0f0003ff  actual 0 -> f  auto 1 -> 0
+apcie_sys_st1  0x1000030f -> 0x0f0003ff  actual 0 -> f  auto 1 -> 0
+```
+
+ANS and every already-active provider remained unchanged. The diagnostic
+printed `PMGR force-active verified; stopping before ANS MMIO`, and the shell
+answered both liveness markers. The target was then rebooted rather than
+unloading the module and returned to a quiescent m1n1 proxy.
+
+This is the first successful physical-state correction at the fatal boundary.
+Next, prepare a third diagnostic that performs the same verified transition,
+then executes exactly the single previously fatal `readl()` at ANS
+CPU_CONTROL `0x209600044`, logs the returned value, and immediately exits
+through the no-detach path. Do not queue reset work or write CPU_CONTROL in
+that retry. A successful read would justify a later normal controller-boot
+attempt; another reset would disprove the parent-gating hypothesis. Never
+mount, repair, format, flush, or write the namespace. Exact output:
+`logs/t6040-console-20260713-nvme-pmgr-force-active.log`.
 
 ## 4. Upstream / share
 - Post the drafted writeups: `done/2026-07-10-t6040-smp-writeup.md`,

@@ -301,6 +301,13 @@ existing locked active-state callback for the three gated providers. It
 snapshots before/after and still returns before `nvme_add_ctrl()`. Exact hashes
 and safety review are in `NEXT_STEPS.md` and the NVMe map.
 
+Linux #26 completed that verification. Only `apcie_sys_st0`,
+`apcie_sys_st1`, and `apcie_phy_sw` transitioned; all reached actual `f` with
+AUTO_ENABLE clear, and the target remained responsive. It was rebooted without
+module unload and left at m1n1. The next bounded diagnostic may repeat that
+transition and perform exactly one read of ANS CPU_CONTROL, then stop. Exact
+transcript: `logs/t6040-console-20260713-nvme-pmgr-force-active.log`.
+
 The remaining T8103 ANS2 fallback agrees with m1n1 on ASC v4, 64-entry linear
 queues, and functional ANS/NVMMU offsets. m1n1's historical TCB-status
 diagnostic read remains `0x29120` versus Linux's `0x28120`; resolve that from a

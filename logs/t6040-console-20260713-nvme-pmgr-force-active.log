@@ -1,0 +1,56 @@
+T6040 J614s NVMe PMGR force-active verification
+2026-07-13, Linux build #26
+
+__FORCE_CORE_BEGIN__
+__FORCE_CORE_RC__0
+__FORCE_APPLE_BEGIN__
+<4>[   57.233858] nvme-apple 20dcc0000.nvme: trace: platform probe entered
+<4>[   57.337119] nvme-apple 20dcc0000.nvme: trace: allocation entered
+<4>[   57.441189] nvme-apple 20dcc0000.nvme: trace: power domains attached
+<4>[   57.545151] nvme-apple 20dcc0000.nvme: trace: MMIO resources mapped
+<4>[   57.649169] nvme-apple 20dcc0000.nvme: trace: SART supplier acquired
+<4>[   57.753258] nvme-apple 20dcc0000.nvme: trace: queues allocated
+<4>[   57.857223] nvme-apple 20dcc0000.nvme: trace: RTKit client initialized
+<4>[   57.961121] nvme-apple 20dcc0000.nvme: trace: NVMe controller object initialized
+<4>[   58.065123] nvme-apple 20dcc0000.nvme: trace: raw PMGR snapshot before force-active
+<4>[   58.169127] nvme-apple 20dcc0000.nvme: trace: PMGR ans offset 0x370 raw 0x0f0000ff target 0xf actual 0xf auto 0 reset 0
+<4>[   58.273121] nvme-apple 20dcc0000.nvme: trace: PMGR fab3_soc offset 0x118 raw 0x1f0000ff target 0xf actual 0xf auto 1 reset 0
+<4>[   58.377131] nvme-apple 20dcc0000.nvme: trace: PMGR afc offset 0x178 raw 0x1f0000ff target 0xf actual 0xf auto 1 reset 0
+<4>[   58.485124] nvme-apple 20dcc0000.nvme: trace: PMGR apcie_phy_sw offset 0x398 raw 0x1400024f target 0xf actual 0x4 auto 1 reset 0
+<4>[   58.589122] nvme-apple 20dcc0000.nvme: trace: PMGR apcie_sys_st0 offset 0x380 raw 0x1000030f target 0xf actual 0x0 auto 1 reset 0
+<4>[   58.693121] nvme-apple 20dcc0000.nvme: trace: PMGR ans offset 0x370 raw 0x0f0000ff target 0xf actual 0xf auto 0 reset 0
+<4>[   58.797128] nvme-apple 20dcc0000.nvme: trace: PMGR fab3_soc offset 0x118 raw 0x1f0000ff target 0xf actual 0xf auto 1 reset 0
+<4>[   58.905124] nvme-apple 20dcc0000.nvme: trace: PMGR afc offset 0x178 raw 0x1f0000ff target 0xf actual 0xf auto 1 reset 0
+<4>[   59.009121] nvme-apple 20dcc0000.nvme: trace: PMGR apcie_st0 offset 0x108 raw 0x000000ff target 0xf actual 0xf auto 0 reset 0
+<4>[   59.113120] nvme-apple 20dcc0000.nvme: trace: PMGR apcie_sys_st1 offset 0x388 raw 0x1000030f target 0xf actual 0x0 auto 1 reset 0
+<4>[   59.217130] nvme-apple 20dcc0000.nvme: trace: PMGR ans offset 0x370 raw 0x0f0000ff target 0xf actual 0xf auto 0 reset 0
+<4>[   59.325121] nvme-apple 20dcc0000.nvme: trace: PMGR fab3_soc offset 0x118 raw 0x1f0000ff target 0xf actual 0xf auto 1 reset 0
+<4>[   59.429131] nvme-apple 20dcc0000.nvme: trace: PMGR afc offset 0x178 raw 0x1f0000ff target 0xf actual 0xf auto 1 reset 0
+<4>[   59.537122] nvme-apple 20dcc0000.nvme: trace: PMGR apcie_st1 offset 0x110 raw 0x000000ff target 0xf actual 0xf auto 0 reset 0
+<4>[   59.641116] nvme-apple 20dcc0000.nvme: trace: PMGR force-active begin
+<4>[   59.745191] nvme-apple 20dcc0000.nvme: trace: PMGR apcie_sys_st0 forced to actual active
+<4>[   59.853155] nvme-apple 20dcc0000.nvme: trace: PMGR apcie_sys_st1 forced to actual active
+<4>[   59.957144] nvme-apple 20dcc0000.nvme: trace: PMGR apcie_phy_sw forced to actual active
+<4>[   60.061115] nvme-apple 20dcc0000.nvme: trace: PMGR force-active complete
+<4>[   60.165123] nvme-apple 20dcc0000.nvme: trace: raw PMGR snapshot after force-active
+<4>[   60.269124] nvme-apple 20dcc0000.nvme: trace: PMGR ans offset 0x370 raw 0x0f0000ff target 0xf actual 0xf auto 0 reset 0
+<4>[   60.373119] nvme-apple 20dcc0000.nvme: trace: PMGR fab3_soc offset 0x118 raw 0x1f0000ff target 0xf actual 0xf auto 1 reset 0
+<4>[   60.477130] nvme-apple 20dcc0000.nvme: trace: PMGR afc offset 0x178 raw 0x1f0000ff target 0xf actual 0xf auto 1 reset 0
+<4>[   60.585123] nvme-apple 20dcc0000.nvme: trace: PMGR apcie_phy_sw offset 0x398 raw 0x0f0002ff target 0xf actual 0xf auto 0 reset 0
+<4>[   60.689121] nvme-apple 20dcc0000.nvme: trace: PMGR apcie_sys_st0 offset 0x380 raw 0x0f0003ff target 0xf actual 0xf auto 0 reset 0
+<4>[   60.793120] nvme-apple 20dcc0000.nvme: trace: PMGR ans offset 0x370 raw 0x0f0000ff target 0xf actual 0xf auto 0 reset 0
+<4>[   60.897129] nvme-apple 20dcc0000.nvme: trace: PMGR fab3_soc offset 0x118 raw 0x1f0000ff target 0xf actual 0xf auto 1 reset 0
+<4>[   61.005122] nvme-apple 20dcc0000.nvme: trace: PMGR afc offset 0x178 raw 0x1f0000ff target 0xf actual 0xf auto 1 reset 0
+<4>[   61.109121] nvme-apple 20dcc0000.nvme: trace: PMGR apcie_st0 offset 0x108 raw 0x000000ff target 0xf actual 0xf auto 0 reset 0
+<4>[   61.213120] nvme-apple 20dcc0000.nvme: trace: PMGR apcie_sys_st1 offset 0x388 raw 0x0f0003ff target 0xf actual 0xf auto 0 reset 0
+<4>[   61.317132] nvme-apple 20dcc0000.nvme: trace: PMGR ans offset 0x370 raw 0x0f0000ff target 0xf actual 0xf auto 0 reset 0
+<4>[   61.425121] nvme-apple 20dcc0000.nvme: trace: PMGR fab3_soc offset 0x118 raw 0x1f0000ff target 0xf actual 0xf auto 1 reset 0
+<4>[   61.529121] nvme-apple 20dcc0000.nvme: trace: PMGR afc offset 0x178 raw 0x1f0000ff target 0xf actual 0xf auto 1 reset 0
+<4>[   61.633122] nvme-apple 20dcc0000.nvme: trace: PMGR apcie_st1 offset 0x110 raw 0x000000ff target 0xf actual 0xf auto 0 reset 0
+<4>[   61.737125] nvme-apple 20dcc0000.nvme: trace: PMGR force-active verified; stopping before ANS MMIO
+__FORCE_APPLE_RC__0
+__FORCE_TARGET_ALIVE__
+__FORCE_POSTCHECK_ALIVE__
+
+No reset work, ANS MMIO, CoastGuard transition, SART entry access, mailbox,
+NVMe command, namespace command, or storage command occurred.
