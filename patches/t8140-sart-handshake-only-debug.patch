@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH DEBUG] soc: apple: sart: isolate T8140 power handshake
 
 This is a bring-up-only diagnostic to separate the CoastGuard power-control

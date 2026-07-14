@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH 2/2] pmdomain: apple: Handle T6041 raw-boot state
 
 T6041 raw boot leaves core firmware resources active. It also has two
@@ -12,7 +12,7 @@ disp_cpu domain disabled in the device tree.
 Select that behavior from the T6041 compatible. Keep the bring-up property
 handling so older experimental device trees continue to work.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
  drivers/pmdomain/apple/pmgr-pwrstate.c | 21 +++++++++++++++++++--
  1 file changed, 19 insertions(+), 2 deletions(-)

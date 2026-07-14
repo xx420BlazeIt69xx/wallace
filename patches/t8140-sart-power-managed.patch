@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH] soc: apple: sart: support T8140 CoastGuard power control
 
 The T8140 SART register file is not safe to access while its separate
@@ -12,7 +12,7 @@ the active state and one requests the inactive state. The power register
 resides inside the ANS resource, so map it without claiming the overlapping
 region.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
  drivers/soc/apple/sart.c | 134 ++++++++++++++++++++++++++++++++++++++-
  1 file changed, 132 insertions(+), 2 deletions(-)

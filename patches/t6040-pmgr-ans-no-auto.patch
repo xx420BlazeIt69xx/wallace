@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH] pmdomain: apple: keep T6041 ANS out of auto-PM
 
 The T6041 raw-boot state leaves the ANS PMGR domain fully active with
@@ -14,7 +14,7 @@ Diagnostic result (2026-07-13): this did not move the first-read boundary.
 The target still reset at the first ANS CPU_CONTROL read with a current-boot
 trace relay. Retain for reproduction only; do not submit this patch.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
  drivers/pmdomain/apple/pmgr-pwrstate.c | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)

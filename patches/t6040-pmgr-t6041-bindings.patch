@@ -1,11 +1,11 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH 1/2] dt-bindings: apple: pmgr: Add T6041 compatibles
 
 T6041 PMGR uses the T8103 register layout, but needs its own compatible for
 raw-boot power-state handling. Document the compatibles already used by the
 T6040 device trees.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
  .../devicetree/bindings/arm/apple/apple,pmgr.yaml           | 1 +
  .../devicetree/bindings/power/apple,pmgr-pwrstate.yaml      | 1 +

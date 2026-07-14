@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH DEBUG] soc: apple: sart: trace CoastGuard transitions
 
 Bring-up-only checkpoints for streaming over /dev/kmsg while the first ANS

@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH DEBUG] nvme: apple: snapshot PMGR chain and stop before ANS
 
 Bring-up-only diagnostic for the T6040 first ANS access. Follow only the
@@ -13,7 +13,7 @@ requesting a power-off during normal probe-failure cleanup.
 This patch depends on t6040-nvme-trace-debug.patch for the yielding trace
 helper. Do not submit it.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
  drivers/nvme/host/apple.c | 97 ++++++++++++++++++++++++++++++++++++++++
  1 file changed, 97 insertions(+)

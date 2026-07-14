@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH] dt-bindings: iommu: apple,sart: describe T8140 power control
 
 T8140 uses a CoastGuard SART whose entry register file must be activated
@@ -6,7 +6,7 @@ through a control register inside the ANS MMIO window before access. Give
 this incompatible power-managed variant its own compatible entry and
 describe the separate, named power register resource.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
  Documentation/devicetree/bindings/iommu/apple,sart.yaml | 30 ++++++++++++++++++++++++++++--
  1 file changed, 28 insertions(+), 2 deletions(-)

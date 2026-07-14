@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH DEBUG] nvme: apple: trace post-ANS controller setup
 
 The translated T6040 storage map reaches ANS boot status successfully, but
@@ -7,7 +7,7 @@ checkpoints around the existing NVMMU, queue, controller-enable, Identify,
 and I/O-queue setup phases. This changes no register values or control flow
 and depends on t6040-nvme-trace-debug.patch. Do not submit it.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
 diff --git a/drivers/nvme/host/apple.c b/drivers/nvme/host/apple.c
 index d118ac3..bb7fc7f 100644

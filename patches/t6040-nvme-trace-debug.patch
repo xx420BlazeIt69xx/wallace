@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH DEBUG] nvme: apple: trace first-probe phases
 
 Bring-up-only checkpoints for the T6040 first probe.  Delay 100 ms after each

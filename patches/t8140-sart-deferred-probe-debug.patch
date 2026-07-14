@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH DEBUG] soc: apple: sart: defer all T8140 SART accesses
 
 This is a bring-up-only diagnostic.  Allow the power-managed SART platform

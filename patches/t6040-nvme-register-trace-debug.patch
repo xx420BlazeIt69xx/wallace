@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH DEBUG] nvme: apple: preserve protected T8140 setup
 
 The T8140 ANS register layout exposes the normal NVMe queue registers but
@@ -12,7 +12,7 @@ bounded target run can identify the next access boundary.  This is a
 bring-up patch and depends on t6040-nvme-init-trace-debug.patch.  Do not
 submit it in this form.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
 diff --git a/drivers/nvme/host/apple.c b/drivers/nvme/host/apple.c
 index bb7fc7f..f81a2bc 100644

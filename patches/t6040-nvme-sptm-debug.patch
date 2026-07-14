@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH DEBUG] nvme: apple: try protected T8140 queue setup
 
 macOS does not write AQA, ASQ, or ACQ directly when both nvme-sptm and
@@ -11,7 +11,7 @@ This is a bounded bring-up diagnostic: raw m1n1 boots with GXF disabled, so
 the guarded instruction may trap instead of reaching SPTM.  Do not submit
 this in its current form.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
 diff --git a/drivers/nvme/host/apple.c b/drivers/nvme/host/apple.c
 index f81a2bc..3e4e4dc 100644

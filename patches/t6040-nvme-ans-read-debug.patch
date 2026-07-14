@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH DEBUG] nvme: apple: isolate first ANS control read
 
 After the diagnostic has forced and verified the declared PMGR chain at
@@ -11,7 +11,7 @@ This patch depends on t6040-pmgr-force-active-debug.patch. It is selected
 only by the apple,pmgr-force-active-read-stop DT property.
 Do not submit it.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
 diff --git a/drivers/nvme/host/apple.c b/drivers/nvme/host/apple.c
 index 4f72528..e48291b 100644

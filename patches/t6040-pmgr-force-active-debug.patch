@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH DEBUG] apple: force declared NVMe PMGR chain active
 
 Bring-up-only diagnostic for the T6040 first ANS access. Export a bounded
@@ -19,7 +19,7 @@ This patch depends on t6040-pmgr-t6041-quirks.patch,
 t6040-pmgr-ans-no-auto.patch, t6040-nvme-trace-debug.patch, and
 t6040-nvme-pmgr-snapshot-debug.patch. Do not submit it.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
 diff --git a/drivers/nvme/host/apple.c b/drivers/nvme/host/apple.c
 index ae810c1..4f72528 100644

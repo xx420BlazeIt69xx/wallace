@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH] soc: apple: sart: defer CoastGuard access until first use
 
 The T8140 CoastGuard control register is not accessible when the
@@ -11,7 +11,7 @@ Serialize the one-time scan so concurrent clients cannot allocate an entry
 before the firmware-owned entries are protected.  During shutdown, avoid
 reactivating a power-managed SART when it has no live Linux regions.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
  drivers/soc/apple/sart.c | 61 +++++++++++++++++++++++++++-------------
  1 file changed, 42 insertions(+), 19 deletions(-)

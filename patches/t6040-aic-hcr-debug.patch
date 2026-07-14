@@ -1,10 +1,10 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH DEBUG] irqchip/apple-aic: skip locked HCR write on T6040
 
 The M4 raw-boot environment also rejects the EL2 vGIC maintenance register
 write.  Keep this bring-up-only alongside the existing guest-timer skip.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
 diff --git a/drivers/irqchip/irq-apple-aic.c b/drivers/irqchip/irq-apple-aic.c
 --- a/drivers/irqchip/irq-apple-aic.c

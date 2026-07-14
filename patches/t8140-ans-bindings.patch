@@ -1,11 +1,11 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH] dt-bindings: apple: Add T8140 ANS storage compatibles
 
 T8140 uses an ASC v4 mailbox and SART v3 for its ANS2 storage controller.
 The controller follows the T8103 ANS2 programming model. Document the
 compatible combinations already used by the T8140 device tree.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
  Documentation/devicetree/bindings/iommu/apple,sart.yaml       | 1 +
  Documentation/devicetree/bindings/mailbox/apple,mailbox.yaml  | 1 +

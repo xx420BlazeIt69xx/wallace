@@ -1,4 +1,4 @@
-From: Carl Joakim Damsleth <kim@damsleth.com>
+From: CJ Damsleth <kim@damsleth.no>
 Subject: [PATCH DEBUG] nvme: apple: continue after verified PMGR activation
 
 After the isolated CPU_CONTROL read succeeds, allow one opt-in DT property
@@ -10,7 +10,7 @@ firmware.
 This patch depends on t6040-nvme-ans-read-debug.patch. It is selected only by
 apple,pmgr-force-active-continue. Do not submit it.
 
-Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
 ---
 diff --git a/drivers/nvme/host/apple.c b/drivers/nvme/host/apple.c
 index e48291b..d118ac3 100644
