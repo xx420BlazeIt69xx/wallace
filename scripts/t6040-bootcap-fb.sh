@@ -31,6 +31,8 @@
 # src/kboot.c / src/wdt.c): a hung kernel auto-warm-resets back to "Running proxy"
 # (DRAM retained), so you don't have to power-cycle by hand to retry.
 set -uo pipefail
+# rig turn-taking: refuse if the OTHER agent holds a live lease (scripts/rig-lease.sh).
+source "$(dirname "$0")/rig-guard.sh"
 M1=/dev/cu.usbmodemJ22GYCN4YG1
 OUT=/Users/damsleth/Code/linux-build-out
 cd /Users/damsleth/Code/m1n1

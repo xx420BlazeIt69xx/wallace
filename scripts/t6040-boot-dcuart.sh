@@ -18,6 +18,9 @@
 # On a hung kernel the m1n1 watchdog warm-resets in ~20s; DebugUSB mode may
 # need re-entering: sudo -n /usr/local/bin/macvdmtool debugusb
 set -euo pipefail
+# rig turn-taking: refuse if the OTHER agent holds a live lease; warn (proceed)
+# on an idle rig. Set RIG_AGENT=<you>; hold the lease via scripts/rig-lease.sh.
+source "$(dirname "$0")/rig-guard.sh"
 M1=${M1N1DEVICE:-/tmp/m1n1}
 OUT=/Users/damsleth/Code/linux-build-out
 cd /Users/damsleth/Code/m1n1

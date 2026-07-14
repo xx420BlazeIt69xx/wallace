@@ -27,6 +27,12 @@
 
 set -e
 
+# rig turn-taking: refuse if the OTHER agent holds a live lease. This is the
+# recovery/link script, so it may run while NEEDS_RECOVERY is set (its job);
+# after it re-establishes a healthy proxy, run: rig-lease.sh recovered <agent>.
+: "${RIG_ALLOW_RECOVERY:=1}"
+source "$(dirname "$0")/rig-guard.sh"
+
 KISD=""
 for c in /usr/local/bin/kisd ~/Code/kisd/target/release/kisd ~/Code/kisd/target/debug/kisd; do
     [ -x "$c" ] && KISD="$c" && break
