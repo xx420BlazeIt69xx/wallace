@@ -1,0 +1,112 @@
+#!/bin/busybox sh
+# T6040 USB2 external-root init (tickets 009/031/032).
+#
+# Two jobs in one init:
+#   1. SMOKE (no usable root= on the cmdline, or root not found): report USB host
+#      enumeration + block devices over the DockChannel console and drop to a
+#      shell. This is the rig smoke test that must pass before an external rootfs
+#      is worth building — it proves the forced-host dwc3-apple port enumerates a
+#      device and it survives past enumeration (the parked gadget's failure mode).
+#   2. ROOT: with root=PARTUUID=<uuid> (or LABEL=/UUID=), wait for the external
+#      USB disk, mount it read-write, and switch_root into it.
+#
+# It NEVER mounts or writes an internal device: internal NVMe is SPTM-gated and
+# invisible to Linux anyway (ticket 008), and on any failure we stop at a shell.
+
+BB=/bin/busybox
+$BB mount -t proc none /proc
+$BB mount -t sysfs none /sys
+$BB mount -t devtmpfs none /dev 2>/dev/null
+
+log() { echo "[usb-root] $*"; }
+
+echo ""
+echo "==================================================="
+echo "  T6040 USB2 EXTERNAL-ROOT init"
+echo "==================================================="
+$BB uname -a
+
+if [ -c /dev/watchdog0 ]; then
+    $BB watchdog -T 30 -t 10 /dev/watchdog0 &
+    log "watchdog0 active (30s/10s)"
+fi
+
+# Remote console over DockChannel (same pattern as the dcuart boot init): hold
+# the port open for the life of init and respawn a shell on it.
+dc_console() {
+    n=0
+    while [ ! -c /dev/ttydc0 ] && [ $n -lt 15 ]; do $BB sleep 1; n=$((n + 1)); done
+    [ -c /dev/ttydc0 ] || { log "WARNING: /dev/ttydc0 missing"; return; }
+    exec 9<>/dev/ttydc0
+    ( echo ""; echo "*** t6040 USB-root init alive ***"; $BB uname -a ) >&9 2>/dev/null
+    ( while :; do
+        $BB setsid $BB sh -c 'exec /bin/busybox sh -i <>/dev/ttydc0 >&0 2>&1' \
+            || echo "[usb-root] shell spawn rc=$?" >&9
+        $BB sleep 2
+      done ) &
+}
+
+# Report the USB host + storage state (goes to fbcon and, if present, ttydc0).
+usb_report() {
+    echo "--- dwc3 / xhci / dart / usb-storage dmesg ---"
+    $BB dmesg | $BB grep -Ei 'dwc3|xhci|dart|usb-storage|uas|scsi|usb [0-9]' | $BB tail -40
+    echo "--- USB devices (/sys/bus/usb) ---"
+    for d in /sys/bus/usb/devices/*/product; do
+        [ -r "$d" ] && echo "  $($BB cat "$d") [$($BB dirname "$d" | $BB xargs basename)]"
+    done 2>/dev/null
+    echo "--- block devices ---"
+    $BB cat /proc/partitions
+    echo "--- blkid ---"
+    $BB blkid 2>/dev/null
+}
+
+dc_console
+
+# Parse root= from the cmdline (PARTUUID=/LABEL=/UUID=/dev path all accepted).
+ROOTSPEC=""
+for tok in $($BB cat /proc/cmdline); do
+    case "$tok" in root=*) ROOTSPEC="${tok#root=}";; esac
+done
+ROOTFSTYPE=ext4
+for tok in $($BB cat /proc/cmdline); do
+    case "$tok" in rootfstype=*) ROOTFSTYPE="${tok#rootfstype=}";; esac
+done
+
+resolve_root() {
+    case "$1" in
+        PARTUUID=*|LABEL=*|UUID=*) $BB findfs "$1" 2>/dev/null;;
+        /dev/*)                    [ -b "$1" ] && echo "$1";;
+        *)                         :;;
+    esac
+}
+
+if [ -n "$ROOTSPEC" ]; then
+    log "root spec: $ROOTSPEC ($ROOTFSTYPE); waiting for external USB disk"
+    dev=""; n=0
+    while [ -z "$dev" ] && [ $n -lt 30 ]; do
+        dev=$(resolve_root "$ROOTSPEC")
+        [ -n "$dev" ] && break
+        $BB sleep 1; n=$((n + 1))
+    done
+    if [ -n "$dev" ] && [ -b "$dev" ]; then
+        log "found root at $dev after ${n}s; mounting"
+        if $BB mount -t "$ROOTFSTYPE" "$dev" /newroot 2>/dev/null && [ -x /newroot/sbin/init -o -x /newroot/init ]; then
+            log "switch_root -> $dev"
+            exec $BB switch_root /newroot /sbin/init
+            log "ERROR: switch_root failed"
+        else
+            log "ERROR: mount/init check failed for $dev — NOT touching any other device"
+        fi
+    else
+        log "ERROR: root $ROOTSPEC not found after ${n}s"
+    fi
+else
+    log "no root= on cmdline: SMOKE mode (report + shell, no pivot)"
+fi
+
+usb_report
+echo "==================================================="
+echo "  USB-root init stopped in diagnostic shell."
+echo "  (no internal device is ever mounted here)"
+echo "==================================================="
+exec $BB sh

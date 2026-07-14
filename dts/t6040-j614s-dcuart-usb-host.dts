@@ -10,9 +10,12 @@
  *
  * Host mode without an atcphy driver or an AP-visible Type-C PD controller:
  * relies on the USB2 PHY state iBoot/m1n1 leaves on the port and on default
- * VBUS. dr_mode is pinned to "host" (no dynamic role detection to do). USB3 /
- * Thunderbolt / ATC PHY tunable buckets are intentionally NOT enabled
- * (atc-phy,t6040 has no driver and its per-bucket reg_offsets are unknown).
+ * VBUS. dwc3-apple is role-switch driven and never sees a cable event on M4, so
+ * dr_mode="host" alone does NOT bring the port up — the apple,force-host-mode
+ * property (patches/t6040-dwc3-apple-force-host.patch, mirroring the in-tree
+ * apple,force-device-mode) forces DWC3_APPLE_HOST at probe. USB3 / Thunderbolt /
+ * ATC PHY tunable buckets are intentionally NOT enabled (atc-phy,t6040 has no
+ * driver and its per-bucket reg_offsets are unknown).
  *
  * All three ports are enabled so whichever carries the disk and has a usable
  * PHY enumerates; ticket 032 / a gated rig run identifies the viable physical
@@ -31,6 +34,7 @@
 &usb_drd0 {
 	/delete-property/ apple,force-device-mode;
 	dr_mode = "host";
+	apple,force-host-mode;
 	/* keep: apple,t8103-dwc3, t8110 DART iommus, ps_atc0_usb, high-speed */
 	status = "okay";
 };
@@ -41,6 +45,7 @@
 &usb_drd1 {
 	/delete-property/ apple,force-device-mode;
 	dr_mode = "host";
+	apple,force-host-mode;
 	status = "okay";
 };
 
@@ -50,5 +55,6 @@
 &usb_drd2 {
 	/delete-property/ apple,force-device-mode;
 	dr_mode = "host";
+	apple,force-host-mode;
 	status = "okay";
 };

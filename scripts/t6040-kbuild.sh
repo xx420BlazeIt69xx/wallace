@@ -17,7 +17,10 @@
 #   /build : container-local (case-sensitive, fast)
 set -euo pipefail
 
-BRANCH=feature/m4-m5-minimal-device-trees
+# USB host/gadget driver work (dwc3-apple force-{device,host}-mode) lives on the
+# t6040-usb-wip branch, not the mainline bring-up branch; override for those.
+#   USB_HOST=1 builds must set BRANCH=t6040-usb-wip.
+BRANCH="${BRANCH:-feature/m4-m5-minimal-device-trees}"
 APPLE=arch/arm64/boot/dts/apple
 
 echo "== deps =="
@@ -46,6 +49,9 @@ if [ -f /src/$APPLE/t6040-j614s-kbd-infra.dts ]; then
 fi
 if [ -f /src/$APPLE/t6040-j614s-dcuart.dts ]; then
     cp /src/$APPLE/t6040-j614s-dcuart.dts $APPLE/
+fi
+if [ -f /src/$APPLE/t6040-j614s-dcuart-usb-host.dts ]; then
+    cp /src/$APPLE/t6040-j614s-dcuart-usb-host.dts $APPLE/
 fi
 if [ "${DOCKCHANNEL_IRQ_TEST:-0}" = "1" ]; then
     [ "${DOCKCHANNEL:-0}" = "1" ] || {
@@ -121,6 +127,20 @@ if sed -n '/static int aic_init_cpu/,/PMC FIQ/p' drivers/irqchip/irq-apple-aic.c
     exit 1
 else
     echo "aic_init_cpu locked-sysreg writes disabled OK"
+fi
+
+if [ "${USB_HOST:-0}" = "1" ]; then
+    echo "== apply dwc3-apple force-host-mode patch (USB2 external-root, ticket 032) =="
+    if git apply --check /out/t6040-dwc3-apple-force-host.patch 2>/dev/null; then
+        git apply /out/t6040-dwc3-apple-force-host.patch
+        echo "t6040-dwc3-apple-force-host.patch applied OK"
+    elif git apply -R --check /out/t6040-dwc3-apple-force-host.patch 2>/dev/null; then
+        echo "t6040-dwc3-apple-force-host.patch already applied"
+    else
+        echo "ERROR: t6040-dwc3-apple-force-host.patch does not apply cleanly:"
+        git apply --check /out/t6040-dwc3-apple-force-host.patch || true
+        exit 1
+    fi
 fi
 
 # A reused build tree can retain the old MTP IRQ-order diagnostics even though
@@ -720,6 +740,20 @@ if [ "${PCIE:-0}" = "1" ]; then
         -e BT -e BT_HCIBCM4377 \
         -e MMC -e MMC_SDHCI -m MMC_SDHCI_PCI
 fi
+if [ "${USB_HOST:-0}" = "1" ]; then
+    # USB2 host image for an external root disk (ticket 009/031/032). Internal
+    # NVMe is SPTM-blocked (ticket 008); Linux roots off an external USB2 disk.
+    # dwc3-apple glue in host mode over the t8110 DART; usb-storage + uas; ext4
+    # and the USB stack are built-in so root is reachable with no modules.
+    # No atcphy driver / ATC PHY nodes (USB3/TB deferred): USB2 high-speed only.
+    ./scripts/config --file .config \
+        -e USB_SUPPORT -e USB -e USB_XHCI_HCD -e USB_XHCI_PLATFORM \
+        -e USB_DWC3 -e USB_DWC3_HOST -e USB_DWC3_DUAL_ROLE -e USB_DWC3_APPLE \
+        -e APPLE_DART -e IOMMU_SUPPORT \
+        -e USB_STORAGE -e USB_UAS \
+        -e SCSI -e BLK_DEV_SD \
+        -e EXT4_FS
+fi
 make ARCH=arm64 olddefconfig >/dev/null
 if [ "${GADGET:-0}" = "1" ]; then
     echo "-- resulting gadget-relevant config --"
@@ -771,12 +805,21 @@ if [ "${PCIE:-0}" = "1" ]; then
     cp $APPLE/t6040-j614s-dcuart-pcie.dtb /out/ \
         && echo "DTB -> /out/t6040-j614s-dcuart-pcie.dtb"
 fi
+if [ "${USB_HOST:-0}" = "1" ]; then
+    make ARCH=arm64 -j"$NPROC" apple/t6040-j614s-dcuart-usb-host.dtb
+    cp $APPLE/t6040-j614s-dcuart-usb-host.dtb /out/ \
+        && echo "DTB -> /out/t6040-j614s-dcuart-usb-host.dtb"
+fi
 
 if [ "${1:-}" = "image" ]; then
     echo "== build kernel Image (slow) =="
     make ARCH=arm64 -j"$NPROC" Image
     image_name=Image
     map_name=System.map
+    if [ "${USB_HOST:-0}" = "1" ]; then
+        image_name=Image-usb-host
+        map_name=System.map-usb-host
+    fi
     if [ "${NVME:-0}" = "1" ]; then
         case "${NVME_MODE:-builtin}" in
             builtin)

@@ -43,26 +43,53 @@ Notes from the ADT:
 - `atc-phy0..3` = `atc-phy,t6040`: **no kernel driver**, per-bucket PHY
   `reg_offset`s unknown → USB3/Thunderbolt out of scope; USB2 only.
 
-## Host-mode conversion (the DT delta)
+## Host-mode conversion — DT delta **plus a driver patch** (corrected)
 
 The current DT pins every port to the parked gadget config
-(`apple,force-device-mode`, `dr_mode = "peripheral"`). The host candidate
-inverts exactly that, keeping DART/power/`high-speed`:
+(`apple,force-device-mode`, `dr_mode = "peripheral"`). Inverting the DT is
+necessary but **not sufficient**: `dwc3-apple` is role-switch driven. On probe it
+stays in `DWC3_APPLE_PROBE_PENDING` and only enters `DWC3_APPLE_HOST` /
+`DWC3_APPLE_DEVICE` when a Type-C role-switch/cable event calls
+`dwc3_apple_init()`. M4 has no AP-visible PD controller to deliver that event, so
+`dr_mode = "host"` alone leaves the core down forever — the same wall the gadget
+hit. The in-tree fix for gadgets is the `apple,force-device-mode` property, which
+forces `DWC3_APPLE_DEVICE` at probe; there is **no** symmetric host property
+upstream.
+
+So host mode needs both:
+
+1. **Driver patch** `patches/t6040-dwc3-apple-force-host.patch` — adds
+   `apple,force-host-mode`, forcing `dwc3_apple_init(HOST)` at probe (an exact
+   structural mirror of the in-tree `apple,force-device-mode` block). Applies
+   clean against the current tree.
+2. **DT delta** per port:
 
 ```dts
 &usb_drdN {
     /delete-property/ apple,force-device-mode;
     dr_mode = "host";
+    apple,force-host-mode;
     status = "okay";
 };
 &usbN_dart0 { status = "okay"; };
 &usbN_dart1 { status = "okay"; };
 ```
 
-Buildable candidate: `dts/t6040-j614s-dcuart-usb-host.dts` (includes the proven
-DockChannel-console + keyboard base; enables all three ports in host mode so
-whichever carries the disk enumerates; no gadget, no ATC PHY nodes).
-`maximum-speed = "high-speed"` (USB2, ~480 Mbps) is retained from the base nodes.
+Buildable candidate: `dts/t6040-j614s-dcuart-usb-host.dts` (proven DockChannel
+console base; all three ports forced host so whichever carries the disk
+enumerates; no gadget, no ATC PHY nodes). `maximum-speed = "high-speed"` (USB2,
+~480 Mbps) is retained. dtc-clean.
+
+### Shared risk with the parked gadget
+
+Forcing host is necessary but the deeper unknown from the gadget effort applies
+here too. With `apple,force-device-mode` the gadget port *enumerated once* but
+went **deaf right after enumeration** (EP0 timeouts), suspected to be the missing
+`atc-phy,t6040` USB2 PHY driver and/or wrong t6040 dwc3-apple wrapper (CIO)
+offsets (`done/2026-07-11-t6040-usb-gadget-plan.md`). A forced-host port may hit
+the same wall. Therefore a **rig smoke test that an external disk actually
+enumerates and stays alive** must precede building a full external rootfs
+(ticket 032) — do not invest in the rootfs on the assumption host works.
 
 ## The two hard constraints (why this can't be fully closed statically)
 
