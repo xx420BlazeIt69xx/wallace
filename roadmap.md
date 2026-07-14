@@ -32,7 +32,7 @@ map, execute-and-return, broken_wfi handled (WFE park), ~10 s chainload loop.
 **Stage B effectively complete 2026-07-10** — cpufreq minimal (APSC/pstate;
 throttle offsets deferred, need RE), MCC t6041 Ph1+2 (TZ offset + cache-enable
 still open), PCIe register map plus clock/PLL targets resolved (first live boot
-still gated), ATC/USB DART audited
+reached the clock-tunable boundary; bounded trace follow-up gated), ATC/USB DART audited
 (DART done, PHY tunables deferred → USB2 fallback), kboot FDT display carveout
 fixed, dapf gate + watchdog arm added for M4.
 
@@ -113,9 +113,10 @@ doable solo with the proxy + ADT dumps; this is the highest-leverage local work.
    even-divide check). Static analysis of `AppleT6040PCIe::start()` proves the
    two new clock groups target reg[5] (CIO3 PLL) and reg[6] (PCIe clkgen); m1n1
    now applies both and reuses the T6031/T8122 init path. The matching
-   PCIe/DART/BCM4388/GL9755 Linux DT and driver image build cleanly. **No live
-   attempt yet:** `pcie_init` is kboot-only and invasive, so the first link-up
-   boot remains gated on explicit approval. Detailed in
+   PCIe/DART/BCM4388/GL9755 Linux DT and driver image build cleanly. The first
+   live attempt reached `No common tunables` and then hung; DebugUSB warm-reboot
+   recovered the proxy. A 105-write clock-only trace build is ready and gated
+   on explicit approval. Detailed in
    `2026-07-14-t6040-wireless-pcie-map.md`. WiFi/BT prerequisite.
 4. **ATC/USB tunables + DART config** — **AUDITED 2026-07-10 (mostly verify+defer).**
    All kboot-only, FDT-only (safe). **DART = done** (t6040 DARTs are `dart,t8110`,
@@ -220,10 +221,11 @@ keyboard/trackpad, battery status. Daily-drivable without GPU/WiFi (USB ethernet
   The complete PCIe/GPIO/DART child topology is in the separately gated
   `t6040-j614s-dcuart-pcie` DT; see
   `done/2026-07-14-t6040-wireless-pcie-map.md`.
-- **Immediate gate:** approve and run the first m1n1-only PCIe link-up boot
-  with the proven base Linux DT (no Linux PCIe node). The complete 1,571-write
-  plan is checked in. Review that result before enabling the Linux host node;
-  until link-up succeeds, firmware work cannot be exercised.
+- **Immediate gate:** approve the 105-write m1n1 clock-tunable trace using the
+  base Linux DT (no Linux PCIe node). The first opaque attempt stalled after
+  `No common tunables`; the new image prints before/after every RMW and stops
+  before PHY/ports. Review that result before enabling the full path or Linux
+  host node; until link-up succeeds, firmware work cannot be exercised.
 - **WiFi:** `brcmfmac` PCIe path; m1n1 already copies the MAC, antenna SKU and
   calibration blob from ADT when `wifi0` is aliased. Firmware still has to be
   extracted from the paired macOS install for board type `apple,mriya`.

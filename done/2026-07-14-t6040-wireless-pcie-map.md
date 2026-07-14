@@ -3,9 +3,9 @@
 ## Result
 
 The J614s internal PCIe topology is now mapped end to end from the paired ADT
-to the existing Linux drivers.  A separate kernel/DT build exists for the first
-gated link-up attempt.  No PCIe MMIO was performed on the target while deriving
-or building this work.
+to the existing Linux drivers. A separate kernel/DT build exists for the later
+Linux-enumeration stage. The initial map and build required no target MMIO; the
+subsequent first live result is recorded below.
 
 The target identity is **Mac16,8 / J614sAP, MacBook Pro 14-inch M4 Pro**.  It is
 not Mac14,8 and it is not the 16-inch chassis.
@@ -97,11 +97,15 @@ These are ADT data applied as `(old & ~mask) | value`, not invented constants.
 
 ## Code and build state
 
-m1n1 now applies the two proven T6040-only groups and continues through the
-existing T6031/T8122 PHY and port sequence:
+m1n1 baseline support applies the two proven T6040-only groups and continues
+through the existing T6031/T8122 PHY and port sequence:
 
 - main: `eb23c423` (`pcie: initialize T6040 clock and PLL blocks`);
 - curated `t6040-bringup`: `da1791a0` (same code-only change).
+
+The current diagnostic heads temporarily trace each T6040 tunable and return
+after the clock groups: main `81da3522`, curated `b95da002`. They do not reach
+the PHY/port sequence.
 
 Both m1n1 trees build cleanly.  The Linux bring-up source is deliberately kept
 separate at `dts/t6040-j614s-dcuart-pcie.dts`; it includes GPIO/pinctrl, all four
@@ -156,27 +160,70 @@ git -C ~/Code/linux show feature/m4-m5-minimal-device-trees:j614s.adt \
   > done/2026-07-14-t6040-pcie-write-manifest.tsv
 ```
 
-## Live gate
+## First live result
 
-`pcie_init()` is a kboot-time invasive operation. A target boot of the new
-m1n1 path remains **unattempted and gated**. It will apply the full existing
-ADT-derived AXI/PHY/PHY-IP/bridge tunable sets and the reused T6031/T8122
-clock/reset/port sequence in addition to the eight newly resolved operations
-above. Do not perform a kboot with m1n1 `eb23c423` until the maintainer
-explicitly approves that complete attempt; keep the M4 at the quiescent
-DebugUSB proxy meanwhile.
+The maintainer approved one m1n1-only attempt using `eb23c423` and the
+PCIe-free base DT. The clean retry reached the controller on 2026-07-14:
 
-Use two stages so a failure has one owner:
+```text
+pcie: Error getting node /arm-io/apcie
+pcie: Initializing t6040 PCIe controller
+pcie: ADT uses 7 reg entries per port
+pcie: No common tunables
+```
 
-1. Chainload m1n1 `eb23c423`, then boot the known-good base DockChannel Image
-   and initramfs with the current PCIe-free base DT. This captures only m1n1's
-   complete PCIe clock/PHY/port sequence and its link result. The Image and
-   initramfs are previously boot-proven; the concurrently rebuilt DT differs
+Output then stopped. PMGR recursion, all 77 AXI tunables, and the RC `+0x4`
+write necessarily completed before the last line. The exact later boundary is
+not yet known because the original build did not print around local tunables;
+the stall could be in either new clock group or the following pre-poll PHY
+tunables. An asynchronous fault is plausible but not proven.
+
+The uploader timed out without a proxy reply. The sanctioned HPM DebugUSB warm
+reboot recovered the target to a healthy `Running proxy`; the opaque sequence
+was not retried. Linux never handed off, no endpoint/port result was observed,
+and no NVMe or user-storage access occurred. Transcript:
+`logs/t6040-console-20260714-pcie-stage1.log`, SHA-256
+`b850b08a6ce2b40a2067324dabacaa52102f6b4c07b1c7b045237f64fb2a5398`.
+
+## Bounded follow-up gate
+
+The prepared diagnostic changes observation and bounds execution:
+
+- m1n1 main `81da3522`; tracing code `47732d50`, stop-before-PHY code
+  `25dc42a2`;
+- curated equivalents `06b6a306` and `b95da002`;
+- main `m1n1.bin` SHA-256
+  `d6351b32e6e344e40c6dbecda7ad4e09bf57587bb02b5022cc9f27a494e951f3`;
+- every T6040 local tunable prints its address/size/mask/value before the RMW
+  and prints `done` only after the access returns;
+- after CIO3 entries 98–104 and clkgen entry 105, m1n1 returns before manifest
+  entry 106. No PHY, port, PERST#, RID2SID, MSIMAP, or Linux PCIe write can run.
+
+The exact next-attempt write set is
+`2026-07-14-t6040-pcie-clock-diagnostic.tsv`, SHA-256
+`85d3472fcf4ccb17379df1aaf46faa9b714cedece6fe65fd484e6dad4081fd93`.
+It is the first 105 operations of the full manifest: 19 PMGR RMWs, 77 proven
+AXI RMWs, one RC write, seven CIO3 RMWs, and one clkgen RMW.
+
+This diagnostic has **not** run and requires separate explicit approval. It
+must boot the PCIe-free base DT. If a tunable faults, its pre-write line is the
+last output; if all eight new entries return, m1n1 prints the diagnostic-stop
+message and the base Linux image may hand off normally.
+
+## Full-path gate
+
+`pcie_init()` is a kboot-time invasive operation. A complete target boot remains
+**unattempted and gated**. It will apply the full existing ADT-derived
+AXI/PHY/PHY-IP/bridge tunable sets and the reused T6031/T8122 clock/reset/port
+sequence. After the bounded trace is understood, use two further stages:
+
+1. Boot a corrected full m1n1 path with the current PCIe-free base DT. The Image
+   and initramfs are previously boot-proven; the concurrently rebuilt DT differs
    from the older build-15 hash but contains no PCIe host node. Current hashes:
    Image `14da8640398fc64b89d9241a75be0ffc8d4260b681068a3c27251cc79c3abaf4`,
    DTB `e7691ee49ed88114154061aeaf29309e3d817ae3ae89d7196bf7ef02a9b3dc9a`,
    initramfs `512c69da94884f3ea83f9a6a4ea0731dcad6b5aaa87eb875ca5a6d7b24c317ca`.
-2. Only after reviewing stage 1, boot the prepared PCIe DT for Linux host/DART
-   and config-space enumeration. Endpoint modules remain absent.
+2. Only after reviewing that result, boot the prepared PCIe DT for Linux
+   host/DART and config-space enumeration. Endpoint modules remain absent.
 
 Neither stage may access the NVMe namespace or mount/repair/format any storage.

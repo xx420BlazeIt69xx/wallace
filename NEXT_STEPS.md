@@ -7,7 +7,7 @@ cable; reboot via `macvdmtool`. No screen-reading or physical access needed.
 Operational details, recipes, and history: `DEVLOG.md`. Long-term: `roadmap.md`.
 Read the DebugUSB link rules in DEVLOG before touching the rig.
 
-## 0. Run the first gated T6040 PCIe link-up attempt
+## 0. Run the bounded T6040 PCIe clock-tunable diagnostic
 
 The former register-map blocker is solved. Static analysis of the paired macOS
 kernelcache proves the two new T6040 groups target ADT reg[5] (CIO3 PLL at
@@ -16,20 +16,23 @@ kernelcache proves the two new T6040 groups target ADT reg[5] (CIO3 PLL at
 sequence. The separate `t6040-j614s-dcuart-pcie` kernel DT builds cleanly and
 describes BCM4388 WiFi/BT on port 0 plus the GL9755 SD reader on port 1.
 
-**Live work is still gated:** `pcie_init()` performs invasive ADT-derived
-PMGR/clock/PHY/reset/port writes at kboot. Do not boot the new path until the
-maintainer explicitly approves the complete attempt. The reproducible
-one-row-per-write review is
-`done/2026-07-14-t6040-pcie-write-manifest.tsv` (1,571 operations); its
-generator is `scripts/t6040-pcie-write-plan.py`. The map, eight newly resolved
-RMWs, code commits, artifact hashes, and staged test shape are in
-`done/2026-07-14-t6040-wireless-pcie-map.md`.
+The first approved m1n1-only attempt ran on 2026-07-14. PMGR and all 77 AXI
+tunables completed, then output stopped after `pcie: No common tunables`, before
+any later PHY/port status. The host uploader timed out and the sanctioned
+DebugUSB warm reboot recovered a healthy proxy. Linux never handed off, no
+port/PERST result was observed, and no storage was accessed. Exact transcript:
+`logs/t6040-console-20260714-pcie-stage1.log`.
 
-Attempt 1 should chainload m1n1 `eb23c423` but boot the base DockChannel DT
-**without a Linux PCIe node**. This isolates and captures the
-complete m1n1 link-training result without adding Linux host-controller writes.
-Only after reviewing that log should attempt 2 use the prepared PCIe DT for
-Linux PCI/DART enumeration. Do not access NVMe or mount/repair/format storage.
+**The next live run is separately gated.** m1n1 main `81da3522` (code commits
+`47732d50` + `25dc42a2`) logs every T6040 tunable immediately before and after
+its RMW, then returns after the eight CIO3/clkgen operations and before every
+PHY/port write. Binary SHA-256:
+`d6351b32e6e344e40c6dbecda7ad4e09bf57587bb02b5022cc9f27a494e951f3`.
+Its complete write set is operations 1–105 in the full manifest, extracted as
+`done/2026-07-14-t6040-pcie-clock-diagnostic.tsv` (SHA-256
+`85d3472fcf4ccb17379df1aaf46faa9b714cedece6fe65fd484e6dad4081fd93`).
+Do not run it until explicitly approved. It must use the PCIe-free base DT and
+must not access NVMe or mount/repair/format storage.
 
 ## 1. Provision and test the J614s trackpad firmware
 `event0` is Apple DockChannel Multi-touch and `event1` is the keyboard. The

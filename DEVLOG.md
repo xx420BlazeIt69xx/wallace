@@ -357,14 +357,24 @@ windows. Paired-kernelcache disassembly proves that T6040's new CIO3 PLL and
 PCIe clock-generator tunables target ADT reg[5] (`0x415046200`) and reg[6]
 (`0x415044000`). m1n1 main `eb23c423` and curated `da1791a0` apply them.
 
-The dedicated PCIe kernel/DT image builds cleanly, but no PCIe live boot has
-occurred. `scripts/t6040-pcie-write-plan.py` expands the committed J614s ADT and
-the complete m1n1 path into
+The dedicated PCIe kernel/DT image builds cleanly.
+`scripts/t6040-pcie-write-plan.py` expands the committed J614s ADT and the
+complete m1n1 path into
 `done/2026-07-14-t6040-pcie-write-manifest.tsv`: 1,571 ordered operations at
 1,459 distinct addresses, with exact size/op/mask/value for every row. The
-first explicitly approved attempt must use the proven base DT without a Linux
-PCIe node, isolating m1n1 link training; Linux enumeration is a second stage.
-Details and hashes are in `done/2026-07-14-t6040-wireless-pcie-map.md`.
+first explicitly approved attempt used the base DT without a Linux PCIe node.
+It completed PMGR and all AXI tunables, printed `No common tunables`, then hung
+before the next status. The uploader timed out; HPM DebugUSB warm-reboot restored
+`Running proxy`. No Linux handoff or storage access occurred. Transcript:
+`logs/t6040-console-20260714-pcie-stage1.log`.
+
+The follow-up m1n1 build logs each T6040 tunable immediately before and after
+the RMW and returns after manifest operation 105, before PHY/ports. Main
+`81da3522` binary hash
+`d6351b32e6e344e40c6dbecda7ad4e09bf57587bb02b5022cc9f27a494e951f3`;
+curated code commit `b95da002`. Its exact subset is
+`done/2026-07-14-t6040-pcie-clock-diagnostic.tsv`. This new live run is gated.
+Full details and hashes are in `done/2026-07-14-t6040-wireless-pcie-map.md`.
 
 ### Watchdog (2026-07-11)
 Linux `apple_wdt` takes over m1n1's WD1; BusyBox pings `/dev/watchdog0` every
