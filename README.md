@@ -2,22 +2,27 @@
 
 Mainline Linux on a MacBook Pro 14" M4 Pro (t6040 "Brava Chop", Mac16,8 / J614s). It boots. BusyBox userspace, working internal keyboard, and a fully remote dev loop over a single USB-C cable: reboot, chainload, boot, interactive shell, all from the host, no fingers on the power button.
 
-This repo is the umbrella. The code lives in four sibling repos, and the knowledge kept getting smeared across them, so everything that guides the work now lives here: plans, scripts, kernel patches, post-mortems.
+This repo is the umbrella. The code lives in four sibling repos and the knowledge kept getting smeared across them so everything that guides the work now lives here: plans, scripts, kernel patches, post-mortems.
 
-## Status (2026-07-12)
+## Status (2026-07-14)
 
-Works: raw boot via m1n1 (kmutil raw enrollment, SPTM allows nothing else), all 14 cores in the proxy, BusyBox shell on mainline 7.2-rc2 plus 3 small patches, internal keyboard, watchdog handover, fbcon on the panel, and a two-way serial console over DebugUSB (`/dev/ttydc0`).
+Works: raw boot via m1n1 (kmutil raw enrollment, SPTM allows nothing else), all 14 cores in the proxy, BusyBox shell on an Asahi-based kernel (`asahi-wip` plus the t6040 patch stack), internal keyboard, watchdog handover, fbcon on the panel, and a two-way serial console over DebugUSB (`/dev/ttydc0`).
 
-The current blocker is pmgr: the full 214-domain power-domain DT hangs the kernel before any console exists. That fight is documented in [DEVLOG.md](docs/DEVLOG.md), and the plan of attack is [NEXT_STEPS.md](docs/NEXT_STEPS.md).
+pmgr, the previous blocker, is solved. The full 214-domain topology boots to BusyBox 3/3 with a minimal T6041 quirk: preserve firmware-active domains, disable `disp_cpu`, and skip auto-enable on the two `dispext*_cpu` domains. Every other exclusion we'd been carrying turned out to be unnecessary.
 
-The console deserves a sentence. M4 raw-boot has no serial port, no hypervisor tricks (SPTM killed those), and the SBU pins are a confirmed dead end on ACE3. The one path is DebugUSB/KIS through the DFU port.
+It's a clean two-patch series now, checkpatch and binding schemas both pass; upstreaming is next.
 
-Linux currently polls the DebugUSB DockChannel FIFO every 5 ms. The earlier
-"dead interrupt" conclusion is provisional: its 4096-input AIC scan used MTP's
-RX BIT(3), while new evidence identifies UART RX as BIT(1). One bounded BIT(1)
-run still produced TX-only output, but could not report whether IRQ 360 fired.
-Polling remains the proven fallback while a TX-only counter diagnostic is
-prepared.
+**Internal NVMe** is a no-go for the foreseeable future. The T8140 controller routes every queue operation through Apple's signed SPTM, and raw boot has no path into that guarded state. We decoded the complete GENTER service-6 ABI from the paired kernelcache, so we know exactly what to call; the machine simply refuses the call from anything outside Apple's own boot chain, and the SPTM service-6 ABI is not documented anywhere. The only path to a usable machine is USB-attached root, which is now fully working.
+
+**PCIe**, which carries WiFi/BT and the SD reader, runs Apple's init sequence cleanly through operation 114 and stalls on 115, the first PHY-IP PLL read. Route-finding for the missing aperture precondition continues offline. The paired BCM4388 firmware is already extracted, waiting for the link to come up.
+
+Along the way I spent a day chasing an SError that turned out to be m1n1's own log ring sitting flush against top-of-RAM. The PCIe writes were innocent the whole time.
+
+**Console**: M4 raw-boot has no serial port, no hypervisor tricks (SPTM killed those), and the SBU pins are a confirmed dead end on ACE3. The one path is DebugUSB/KIS through the DFU port. This on the other hand works sorta-nicely.
+
+Linux still polls that DockChannel FIFO every 5 ms. The corrected RX BIT(1) interrupt diagnostic ran clean and answered the wrong question: injected bytes never even reached the AP-side FIFO in the IRQ-mode build, so interrupt delivery has still never been exercised. Polling stays until the build delta between the two IRQ-mode runs is understood.
+
+The blow-by-blow lives in [DEVLOG.md](docs/DEVLOG.md), and the current plan of attack is [NEXT_STEPS.md](docs/NEXT_STEPS.md).
 
 ## The repos
 
@@ -58,11 +63,3 @@ Before touching any of this, read the pty-discipline rules in [DEVLOG.md](docs/D
 4. [ROADMAP.md](docs/ROADMAP.md), stages A through H, from first light to daily driver
 
 `done/` holds the finished per-topic plans and session write-ups. They're kept because the dead ends are half the value: SBU serial, RAM-dump post-mortems, and per-domain pmgr bisection are all documented graves, so nobody digs them up twice.
-
-## A warning
-
-This is a real, tethered daily-driver machine, and M4 raw-boot punishes curiosity: a read from the wrong MMIO offset raises an async SError that kills the bootloader outright. Addresses come from the ADT, never from sweeping. The full rules are in `~/Code/m1n1/AGENTS.md` and they're binding.
-
-## Standing on shoulders
-
-None of this happens without [Asahi Linux](https://asahilinux.org/) (m1n1, kisd, a decade of collective RE), yuka's minimal M4/M5 device trees, and flokli's t6040 groundwork. The goal is to feed everything back upstream.
