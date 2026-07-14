@@ -180,8 +180,24 @@ followed. Linux did not hand off and no port or storage access ran. The
 351-operation manifest SHA-256 is
 `d4496968ee8fc1202bd4d47247fc6bbaa36f0a3f7cc872a81efabe72327c50fc`.
 Exact result and transcript:
-`done/2026-07-14-t6040-pcie-phy-diagnostic.md`. Any operation-115 isolation
-requires a new exact review and approval; continue using the PCIe-free base DT.
+`done/2026-07-14-t6040-pcie-phy-diagnostic.md`.
+
+The reviewed read-only isolation then ran once at main `d1494f5a`, binary
+SHA-256
+`5616b05fdd21a35990102ce8b711920ec8c442f75c89ce6cfe27da2f24adef67`.
+Operations 1-114 again completed. The pre-read marker for the ADT-derived
+32-bit access at `0x417040090` printed, but no value/completion, L2C status, or
+exception followed. Thus operation 115 stalls on its read side; the earlier
+combined RMW cannot implicate its write half. No operation-115 write, later PHY
+entry, port, Linux PCIe, NVMe, or storage access ran. DebugUSB recovery restored
+a quiescent proxy. Exact review, artifacts, result, and transcript:
+`done/2026-07-14-t6040-pcie-op115-cross-review.md` and
+`done/2026-07-14-t6040-pcie-op115-read-result.md`.
+
+Do not try a write-only operation 115 or move the later PHY-clock poll ahead of
+the tunables without new static evidence. Continue offline route-finding for
+the missing PHY-IP aperture precondition/Apple transition, then require a new
+manifest, cross-review, and explicit approval for any changed live sequence.
 
 ## 1. Provision and test the J614s trackpad firmware
 `event0` is Apple DockChannel Multi-touch and `event1` is the keyboard. The

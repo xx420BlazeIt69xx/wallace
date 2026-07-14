@@ -478,6 +478,22 @@ The sanctioned DebugUSB reboot restored a quiescent proxy. Transcript SHA-256
 `b567ab1353682787549a1e666b489dd46228a960a23cb5248e14c0a5221668bb`.
 Exact addresses, phases, and result:
 `done/2026-07-14-t6040-pcie-phy-diagnostic.md`.
+
+The operation-115 read/write discriminator then ran once at main `d1494f5a`,
+binary SHA-256
+`5616b05fdd21a35990102ce8b711920ec8c442f75c89ce6cfe27da2f24adef67`.
+Its first 114 operations were identical to the proven prefix. The final line
+was the pre-read marker for the ADT-derived 32-bit access at `0x417040090`; no
+read value/completion, L2C status, exception, or later marker appeared. The read
+itself therefore stalls, before any operation-115 write. Linux did not hand
+off and no later PHY, port, PCIe, NVMe, or storage access ran. DebugUSB recovery
+restored a quiescent proxy. Transcript SHA-256
+`bdf7c2f8be0947c5da91c2c7f44f9e41a967a048ca35d0362782d8509bafafc8`.
+Do not try a write-only variant; find the missing PHY-IP aperture precondition
+offline. Full review and result:
+`done/2026-07-14-t6040-pcie-op115-cross-review.md` and
+`done/2026-07-14-t6040-pcie-op115-read-result.md`.
+
 Full details are in `done/2026-07-14-t6040-wireless-pcie-map.md`.
 
 ### Watchdog (2026-07-11)
