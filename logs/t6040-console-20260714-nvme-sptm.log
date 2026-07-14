@@ -1,0 +1,40 @@
+T6040 J614s protected NVMe queue diagnostic, 2026-07-14
+========================================================
+
+Target: 14-inch M4 Pro, T6040/J614s, Mac16,8
+Policy: staged nvme modules; no namespace command or user-storage access
+
+Read-only m1n1 guarded-state snapshot before the Linux attempt:
+
+  CurrentEL=0x8
+  AIDR_EL1=0xd168699696
+  SPRR_CONFIG_EL1=0x0
+  GXF_CONFIG_EL1=0x0
+  GXF_STATUS_EL1=0x0
+  GXF_ENTER_EL1=SYNC exception
+  GXF_ABORT_EL1=SYNC exception
+
+Relevant Linux current-boot trace:
+
+  nvme-apple 40dcc0000.nvme: trace: before ANS CPU control read
+  apple-sart 40dc50000.iommu: trace: CoastGuard activate begin
+  apple-sart 40dc50000.iommu: trace: CoastGuard activate complete
+  apple-sart 40dc50000.iommu: trace: SART entry scan begin
+  apple-sart 40dc50000.iommu: trace: SART entry scan complete
+  nvme-apple 40dcc0000.nvme: trace: ANS RTKit boot returned
+  nvme-apple 40dcc0000.nvme: trace: before ANS boot status read
+  nvme-apple 40dcc0000.nvme: trace: ANS boot status ready
+  nvme-apple 40dcc0000.nvme: trace: before linear queue and NVMMU setup
+  nvme-apple 40dcc0000.nvme: trace: preserving firmware-owned linear queue and NVMMU setup
+  nvme-apple 40dcc0000.nvme: trace: linear queue and NVMMU setup complete
+  nvme-apple 40dcc0000.nvme: trace: before protected admin queue setup
+  Call trace:
+
+No "protected admin queue setup returned" marker appeared. The sole CPU hung
+inside Apple GENTER (`.inst 0x00201420`) while invoking the kernelcache-derived
+service-6 op-0/op-4 sequence. Shell input echoed but did not execute. The
+watchdog warm-reset the machine, and m1n1 returned to "Running proxy".
+
+Conclusion: the macOS NVMe SPTM ABI is decoded correctly enough to reproduce
+its entry sequence, but raw boot has no usable guarded entry. Do not repeat
+this call unchanged and do not substitute direct secure-BAR writes.

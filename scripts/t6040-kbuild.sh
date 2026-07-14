@@ -435,6 +435,17 @@ if [ "${NVME_INIT_TRACE:-0}" = "1" ]; then
     fi
 fi
 
+if [ "${NVME_SPTM_TRACE:-0}" = "1" ] &&
+   [ "${NVME_REGISTER_TRACE:-0}" != "1" ]; then
+    echo "ERROR: NVME_SPTM_TRACE=1 requires NVME_REGISTER_TRACE=1"
+    exit 1
+fi
+if [ "${NVME_SPTM_TRACE:-0}" != "1" ] &&
+   grep -q 'before protected admin queue setup' drivers/nvme/host/apple.c; then
+    echo "== remove protected T8140 queue setup diagnostic =="
+    git apply -R /out/t6040-nvme-sptm-debug.patch
+fi
+
 if [ "${NVME_REGISTER_TRACE:-0}" = "1" ]; then
     [ "${NVME_INIT_TRACE:-0}" = "1" ] || {
         echo "ERROR: NVME_REGISTER_TRACE=1 requires NVME_INIT_TRACE=1"
@@ -454,6 +465,20 @@ if [ "${NVME_REGISTER_TRACE:-0}" = "1" ]; then
 elif grep -q 'preserving firmware-owned linear queue' drivers/nvme/host/apple.c; then
     echo "== remove individual post-ANS register trace =="
     git apply -R /out/t6040-nvme-register-trace-debug.patch
+fi
+
+if [ "${NVME_SPTM_TRACE:-0}" = "1" ]; then
+    echo "== apply protected T8140 queue setup diagnostic =="
+    if grep -q 'before protected admin queue setup' drivers/nvme/host/apple.c; then
+        echo "t6040-nvme-sptm-debug.patch already applied"
+    elif git apply --check /out/t6040-nvme-sptm-debug.patch 2>/dev/null; then
+        git apply /out/t6040-nvme-sptm-debug.patch
+        echo "t6040-nvme-sptm-debug.patch applied OK"
+    else
+        echo "ERROR: t6040-nvme-sptm-debug.patch does not apply cleanly:"
+        git apply --check /out/t6040-nvme-sptm-debug.patch || true
+        exit 1
+    fi
 fi
 
 if [ "${PMGR_FUNCTIONAL:-0}" = "1" ]; then

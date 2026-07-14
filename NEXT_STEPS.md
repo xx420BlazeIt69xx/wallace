@@ -49,7 +49,41 @@ Done this session: raw determinism, requested core-infra and PMGR1 isolations,
 live ADT regeneration, `no_ps` parent filtering, and safe always-on generation
 (no policy by default; explicit legacy flag only).
 
-## 3. Force the storage parents actual-on before any ANS retry
+## 3. Solve protected T8140 NVMe queue ownership
+
+The power and coprocessor side is now proven. Linux forces the three gated PCIe
+parents actual-on, activates the CoastGuard SART, allocates RTKit buffers,
+boots ANS, and reads `APPLE_ANS_BOOT_STATUS_OK`. The remaining failure is not a
+DT, PMGR, SART, or RTKit problem.
+
+T8140 protects both the legacy linear-queue/NVMMU setup and the standard NVMe
+queue registers. Main-BAR reads/writes at `MAX_PEND`/AQA fault; the secure BAR
+at CPU PA `0x44dcc0000` is readable and contains iBoot's disabled-controller
+admin queue state. Static analysis of the paired macOS kernel and
+IONVMeFamily resolved the real interface: Apple calls `_pmap_iommu_ioctl`,
+whose NVMe backend enters SPTM with service 6 operations 0–8 for controller
+initialization, TCB authorization, admin/I/O queue registration, and queue
+activation.
+
+The exact service-6 operation 0 + operation 4 sequence was implemented in
+`patches/t6040-nvme-sptm-debug.patch` and tried once. Raw m1n1 reports
+`SPRR_CONFIG_EL1=0` and `GXF_CONFIG_EL1=0`; Linux reached
+`before protected admin queue setup`, then hung at Apple GENTER
+(`.inst 0x00201420`). No SPTM call returned. The watchdog recovered to m1n1.
+Do not repeat that call unchanged, and do not resume direct main- or secure-BAR
+writes.
+
+Next, stay read-only and answer whether iBoot's already-authorized queue/TCB
+state can be preserved across handoff. Correlate the secure ASQ/ACQ addresses
+(`0x101005db000` / `0x101005dc000`) with reserved boot memory and the iBoot
+NVMe shutdown path. Only after a static design review should a separate target
+attempt reuse firmware state. No Identify command has run yet; never mount,
+repair, format, flush, or write the namespace.
+
+Exact current transcript: `logs/t6040-console-20260714-nvme-sptm.log`.
+Full cumulative analysis: `done/2026-07-13-t6040-nvme-map.md`.
+
+## Storage investigation history (superseded by #3 above)
 The maintainer approved the exact CoastGuard writes. The retry established two
 separate boundaries:
 

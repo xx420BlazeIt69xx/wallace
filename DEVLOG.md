@@ -1,4 +1,4 @@
-# t6040 (M4 Pro, Mac14,8 / J614s) Linux bring-up — DEVLOG & operational reference
+# t6040 (M4 Pro, Mac16,8 / J614s) Linux bring-up — DEVLOG & operational reference
 
 State of the world, how to operate the rig, solved blockers, investigation
 history, and dead ends. Forward-looking work lives in `NEXT_STEPS.md`; the
@@ -225,9 +225,11 @@ not reuse of `apple_dctty_write()`.
 
 ### ANS/NVMe map (2026-07-13, session 5)
 
-Read-only live ADT inspection established the T6040 storage layout: ASC control
-`0x209600000`, mailbox `0x209608000` (IRQs 1530–1533 after normalizing Apple's
-pair order), SART v3 `0x20dc50000`, and NVMe/NVMMU `0x20dcc0000` (IRQ 2583).
+Read-only live ADT inspection established the T6040 storage layout. The ADT
+raw addresses are ASC control `0x209600000`, mailbox `0x209608000`, SART v3
+`0x20dc50000`, and NVMe/NVMMU `0x20dcc0000`; `/arm-io` translation makes the
+CPU physical addresses `0x409600000`, `0x409608000`, `0x40dc50000`, and
+`0x40dcc0000` respectively (IRQs 1530–1533 and 2583).
 Storage uses SART plus the embedded NVMMU, not DART. Disabled nodes are
 committed in Linux `9cf4a92fa16f`; the standard DT performs no new accesses.
 
@@ -319,6 +321,31 @@ The remaining T8103 ANS2 fallback agrees with m1n1 on ASC v4, 64-entry linear
 queues, and functional ANS/NVMMU offsets. m1n1's historical TCB-status
 diagnostic read remains `0x29120` versus Linux's `0x28120`; resolve that from a
 reviewed source, never by probing either offset live.
+
+### Protected T8140 NVMe queue boundary (2026-07-14)
+
+After the parent-power fix, Linux now completes CoastGuard activation and SART
+entry setup, boots ANS RTKit, and reads the ready boot status. The next layer
+is firmware-protected. A same-value linear-SQ write faults; even reading
+`MAX_PEND` faults. Skipping that static block moves the boundary to the normal
+AQA write at CPU PA `0x40dcc0024`.
+
+The translated secure NVMe BAR is `0x44dcc0000 / 0x10000`. Read-only recovery
+showed iBoot state: AQA `0x000f000f`, ASQ `0x101005db000`, ACQ
+`0x101005dc000`, CC `0x00474000`, CSTS `0`. Paired macOS static analysis then
+showed that AppleANS2CGv2 does not write those queues directly. It uses
+`_pmap_iommu_ioctl` and an NVMe PPL backend whose GENTER veneers select SPTM
+service 6: op 0 initializes, op 1 authorizes TCB data, ops 4/5 register
+admin/I/O queues, and ops 6/7 activate SQ/CQ state.
+
+Raw proxy reads returned `SPRR_CONFIG_EL1=0` and `GXF_CONFIG_EL1=0`; reads of
+the guarded entry/abort registers trap. The exact macOS op-0/op-4 sequence was
+then attempted once from Linux. It reached `before protected admin queue
+setup`, hung at GENTER, and watchdog-reset to a healthy m1n1 proxy. Therefore
+the decoded ABI is not directly callable in the current raw-boot environment.
+No NVMe command or user-storage access occurred. Continue with static,
+read-only analysis of preserving iBoot's already-authorized queues; do not
+repeat GENTER or direct secure-BAR writes unchanged.
 
 ### Watchdog (2026-07-11)
 Linux `apple_wdt` takes over m1n1's WD1; BusyBox pings `/dev/watchdog0` every

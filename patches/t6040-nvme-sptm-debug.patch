@@ -1,0 +1,104 @@
+From: Carl Joakim Damsleth <kim@damsleth.com>
+Subject: [PATCH DEBUG] nvme: apple: try protected T8140 queue setup
+
+macOS does not write AQA, ASQ, or ACQ directly when both nvme-sptm and
+nvme-secure-bar are active.  AppleANS2CGv2Controller instead asks the NVMe
+PPL backend to invoke guarded service 6, operation 0 (initialization), then
+operation 4 with the admin SQ/CQ depths and physical addresses.
+
+Exercise that exact ABI on T8140 and skip the protected legacy MMIO writes.
+This is a bounded bring-up diagnostic: raw m1n1 boots with GXF disabled, so
+the guarded instruction may trap instead of reaching SPTM.  Do not submit
+this in its current form.
+
+Signed-off-by: Carl Joakim Damsleth <kim@damsleth.com>
+---
+diff --git a/drivers/nvme/host/apple.c b/drivers/nvme/host/apple.c
+index f81a2bc..3e4e4dc 100644
+--- a/drivers/nvme/host/apple.c
++++ b/drivers/nvme/host/apple.c
+@@ -220,6 +220,39 @@ static void apple_nvme_trace(struct device *dev, const char *phase)
+ 	msleep(100);
+ }
+ 
++#define APPLE_NVME_SPTM_SERVICE(op) (0x600000000ULL | (op))
++
++static noinline u64 apple_nvme_sptm_call(u64 selector, u64 arg0, u64 arg1,
++					 u64 arg2, u64 arg3, u64 arg4)
++{
++	register u64 x0 asm("x0") = arg0;
++	register u64 x1 asm("x1") = arg1;
++	register u64 x2 asm("x2") = arg2;
++	register u64 x3 asm("x3") = arg3;
++	register u64 x4 asm("x4") = arg4;
++	register u64 x16 asm("x16") = selector;
++
++	/* Apple GENTER. The assembler has no mnemonic for this instruction. */
++	asm volatile(".inst 0x00201420"
++		     : "+r"(x0), "+r"(x1), "+r"(x2), "+r"(x3), "+r"(x4),
++		       "+r"(x16)
++		     :
++		     : "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12",
++		       "x13", "x14", "x15", "x17", "memory");
++
++	return x0;
++}
++
++static u64 apple_nvme_sptm_admin_setup(struct apple_nvme *anv)
++{
++	u32 depth = APPLE_NVME_AQ_DEPTH - 1;
++
++	apple_nvme_sptm_call(APPLE_NVME_SPTM_SERVICE(0), 0, 0, 0, 0, 0);
++	return apple_nvme_sptm_call(APPLE_NVME_SPTM_SERVICE(4),
++		anv->adminq.sq_dma_addr, depth, anv->adminq.cq_dma_addr,
++		depth, 0);
++}
++
+ static void apple_nvme_trace_pmgr_node(struct device *dev,
+ 				       struct device_node *node,
+ 				       unsigned int depth)
+@@ -1176,7 +1209,8 @@ static void apple_nvme_reset_work(struct work_struct *work)
+ {
+ 	unsigned int nr_io_queues = 1;
+ 	int ret;
+ 	u32 boot_status, aqa;
++	u64 sptm_ret;
+ 	struct apple_nvme *anv =
+ 		container_of(work, struct apple_nvme, ctrl.reset_work);
+ 	enum nvme_ctrl_state state = nvme_ctrl_state(&anv->ctrl);
+@@ -1307,14 +1341,25 @@ static void apple_nvme_reset_work(struct work_struct *work)
+ 	/* Setup the admin queue */
+ 	aqa = APPLE_NVME_AQ_DEPTH - 1;
+ 	aqa |= aqa << 16;
+-	apple_nvme_trace(anv->dev, "before admin queue attributes write");
+-	writel(aqa, anv->mmio_nvme + NVME_REG_AQA);
+-	apple_nvme_trace(anv->dev, "admin queue attributes programmed");
+-	writeq(anv->adminq.sq_dma_addr, anv->mmio_nvme + NVME_REG_ASQ);
+-	apple_nvme_trace(anv->dev, "admin submission queue base programmed");
+-	writeq(anv->adminq.cq_dma_addr, anv->mmio_nvme + NVME_REG_ACQ);
+-	apple_nvme_trace(anv->dev, "admin queue registers programmed");
+-	if (anv->hw->has_lsq_nvmmu) {
++	if (anv->hw->preserve_boot_config) {
++		apple_nvme_trace(anv->dev,
++				 "before protected admin queue setup");
++		preempt_disable();
++		sptm_ret = apple_nvme_sptm_admin_setup(anv);
++		preempt_enable();
++		dev_warn(anv->dev,
++			 "trace: protected admin queue setup returned %#llx\n",
++			 sptm_ret);
++	} else {
++		apple_nvme_trace(anv->dev, "before admin queue attributes write");
++		writel(aqa, anv->mmio_nvme + NVME_REG_AQA);
++		apple_nvme_trace(anv->dev, "admin queue attributes programmed");
++		writeq(anv->adminq.sq_dma_addr, anv->mmio_nvme + NVME_REG_ASQ);
++		apple_nvme_trace(anv->dev, "admin submission queue base programmed");
++		writeq(anv->adminq.cq_dma_addr, anv->mmio_nvme + NVME_REG_ACQ);
++		apple_nvme_trace(anv->dev, "admin queue registers programmed");
++	}
++	if (anv->hw->has_lsq_nvmmu && !anv->hw->preserve_boot_config) {
+ 		/* Setup NVMMU for both queues */
+ 		writeq(anv->adminq.tcb_dma_addr,
+ 			anv->mmio_nvme + APPLE_NVMMU_ASQ_TCB_BASE);
+-- 
+2.50.1

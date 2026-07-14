@@ -1,10 +1,10 @@
-# T6040 (M4 Pro, Mac14,8 / j614s) — roadmap: first light → full Linux desktop
+# T6040 (M4 Pro, Mac16,8 / J614s) — roadmap: first light → full Linux desktop
 
 End-goal: a bootable Linux distro on this MacBook Pro 14" M4 Pro with GPU accel,
 WiFi, Bluetooth, keyboard/trackpad, audio, webcam, power management — daily-driver
 comfort comparable to macOS.
 
-Written 2026-07-10, last updated **2026-07-13** (post first ANS/SART probe).
+Written 2026-07-10, last updated **2026-07-14** (protected NVMe queue boundary).
 Companion docs: `NEXT_STEPS.md` (immediate work), `DEVLOG.md`
 (operational reference + solved blockers), `t6040-dt-checklist.md` (Stage C
 reference). All finished per-topic plans/write-ups archived in `done/`.
@@ -42,7 +42,7 @@ fixed, dapf gate + watchdog arm added for M4.
 | BusyBox userspace; full PMGR with property-free T6041 quirk, reproducible | PMGR draft review/submission (split, checkpatch/schema-clean; NEXT_STEPS #2) |
 | Internal keyboard at the shell; trackpad registers + validated firmware-loader path | Target ESP's paired trackpad blob; PMU-backed reset remains forbidden; maxcpus>1/idle states |
 | Two-way Linux shell + m1n1 proxy over one DebugUSB cable; remote reboot | Printk over ttydc needs a separate polled/atomic TX path; current TTY queue is not console-safe |
-| Linux apple_wdt; fbcon early console | NVMe rootfs (CoastGuard fixed; PCIe parent chain can now be forced actual-on before the fatal ANS read) |
+| Linux apple_wdt; fbcon early console | NVMe rootfs (power/SART/ANS work; queue and per-command TCB setup require unavailable raw-boot SPTM entry) |
 | Kernel build env (podman, arm64-native) with patch pipeline | USB gadget console (parked: EP0 dies post-enumeration) |
 | SMP/cpufreq/MCC/PCIe m1n1 groundwork (Stage B) | cpufreq throttles, PCIe link-up test, USB3/TB PHY tunables |
 
@@ -177,12 +177,14 @@ maxcpus>1 + cpufreq DT wiring.
 
 *The "it's a real computer now" stage. Weeks.*
 
-- **NVMe** (apple-nvme + SART + ANS RTKit): internal SSD. The approved retry
-  fixed the CoastGuard probe-time access and passed both pre-module gates. The
-  next reset is exactly the first ANS control read at `0x209600044`; ANS hold
-  did not change it. A safe raw snapshot found NVMe's PCIe chain gated under
-  auto-PM; a follow-up successfully forced all three domains actual-on while
-  stopping before ANS. A one-read CPU_CONTROL retry is next (NEXT_STEPS #3).
+- **NVMe** (apple-nvme + SART + ANS RTKit): internal SSD. PCIe parents can be
+  forced actual-on; CoastGuard/SART activation, RTKit buffers, ANS boot, and
+  boot status all succeed. T8140 then rejects direct legacy and standard NVMe
+  queue-register programming. macOS uses guarded SPTM service 6 for queue and
+  per-command TCB authorization. Its ABI is decoded, but raw boot has
+  SPRR/GXF disabled and the exact GENTER call hangs. Next investigate reuse of
+  iBoot's already-authorized queue state; do not repeat direct register or
+  GENTER attempts unchanged (NEXT_STEPS #3).
 - **USB** (dwc3 + ATC PHY): external keyboard/disk/ethernet from day one; also
   the USB-gadget console m1n1 already proves works.
 - **Internal keyboard + trackpad:** ✅ **keyboard DONE early (2026-07-11)** via
