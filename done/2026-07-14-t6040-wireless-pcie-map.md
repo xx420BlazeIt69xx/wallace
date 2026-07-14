@@ -306,6 +306,12 @@ entries completed and base Linux reached BusyBox without SError, proving the
 guard and fully exonerating the PCIe sequence from the `[70]` trace failure.
 See `2026-07-14-t6040-logbuf-upper-guard-control.md`.
 
+Main `f46d6e35`, binary SHA-256
+`8fd7319047187f9ca05a6924462a4f24360fcc1d9e4279b089dc83a5acb05744`,
+restores the Apple-ordered 105-operation write path with the proven guard,
+per-RMW barriers/status samples, and the return before operation 106. Exact
+approval gate: `2026-07-14-t6040-pcie-guarded-clock-diagnostic.md`.
+
 ## Full-path gate
 
 `pcie_init()` is a kboot-time invasive operation. A complete target boot remains

@@ -90,11 +90,16 @@ traced `[70]` failure. Exact m1n1 transcript:
 `2e8624d795bc6bddab24b932a530bf7f992f35732402ed041bfc308857260d63`).
 Full result: `done/2026-07-14-t6040-logbuf-upper-guard-control.md`.
 
-Next, restore the Apple-ordered 105-operation write path while retaining the
-proven upper guard, per-RMW barriers/status samples, and stop-before-PHY return.
-Prepare and hash that binary; its live run requires fresh explicit approval.
-Continue using the PCIe-free base DT; do not access NVMe or
-mount/repair/format storage.
+The Apple-ordered 105-operation path is restored at main `f46d6e35`
+(`v1.6.0-78-gf46d6e35`), binary SHA-256
+`8fd7319047187f9ca05a6924462a4f24360fcc1d9e4279b089dc83a5acb05744`.
+It retains the proven upper guard, per-RMW barriers/status samples, exact
+manifest SHA-256
+`ce86e51aa3d278da1d9ef9eb35fca3208859f4993480de5b6af3268dc03ef4e6`,
+Apple clock-gate order, and hard return before operation 106, the first PHY
+write. Its one live run requires fresh explicit approval; exact gate:
+`done/2026-07-14-t6040-pcie-guarded-clock-diagnostic.md`. Continue using the
+PCIe-free base DT; do not access NVMe or mount/repair/format storage.
 
 ## 1. Provision and test the J614s trackpad firmware
 `event0` is Apple DockChannel Multi-touch and `event1` is the keyboard. The

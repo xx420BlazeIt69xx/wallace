@@ -81,6 +81,8 @@ NVMe, or storage operation ran.
   `6c6c0073bacbec235a9e54c6535a646f34ad372792c02ee30a5cb1fc5983d8e9`
   (36 lines, 2,255 bytes).
 
-The next binary may restore the existing Apple-ordered 105-operation PCIe path,
-retain this guard and the stop-before-PHY boundary, and receive separate
-explicit approval.
+Main `f46d6e35`, binary SHA-256
+`8fd7319047187f9ca05a6924462a4f24360fcc1d9e4279b089dc83a5acb05744`,
+restores the existing Apple-ordered 105-operation PCIe path while retaining this
+guard and the stop-before-PHY boundary. It requires separate explicit approval;
+exact gate: `2026-07-14-t6040-pcie-guarded-clock-diagnostic.md`.

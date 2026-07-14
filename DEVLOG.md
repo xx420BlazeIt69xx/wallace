@@ -420,6 +420,14 @@ SError. m1n1 transcript SHA-256
 Linux transcript SHA-256
 `6c6c0073bacbec235a9e54c6535a646f34ad372792c02ee30a5cb1fc5983d8e9`.
 See `done/2026-07-14-t6040-logbuf-upper-guard-control.md`.
+
+The write-bearing stop-before-PHY path is restored at main `f46d6e35`, binary
+SHA-256
+`8fd7319047187f9ca05a6924462a4f24360fcc1d9e4279b089dc83a5acb05744`.
+It retains the proven upper guard and the exact 105-operation manifest, SHA-256
+`ce86e51aa3d278da1d9ef9eb35fca3208859f4993480de5b6af3268dc03ef4e6`.
+It requires fresh explicit approval; see
+`done/2026-07-14-t6040-pcie-guarded-clock-diagnostic.md`.
 Full details are in `done/2026-07-14-t6040-wireless-pcie-map.md`.
 
 ### Watchdog (2026-07-11)
