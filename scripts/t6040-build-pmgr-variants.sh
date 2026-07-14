@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build reproducible DockChannel-console DTBs for the PMGR isolations in
-# NEXT_STEPS.md. This is host-side and only mutates the disposable kbuild
+# docs/NEXT_STEPS.md. This is host-side and only mutates the disposable kbuild
 # container worktree plus artifacts under ~/Code/linux-build-out.
 set -euo pipefail
 

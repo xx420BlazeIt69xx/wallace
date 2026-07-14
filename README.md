@@ -8,7 +8,7 @@ This repo is the umbrella. The code lives in four sibling repos, and the knowled
 
 Works: raw boot via m1n1 (kmutil raw enrollment, SPTM allows nothing else), all 14 cores in the proxy, BusyBox shell on mainline 7.2-rc2 plus 3 small patches, internal keyboard, watchdog handover, fbcon on the panel, and a two-way serial console over DebugUSB (`/dev/ttydc0`).
 
-The current blocker is pmgr: the full 214-domain power-domain DT hangs the kernel before any console exists. That fight is documented in [DEVLOG.md](DEVLOG.md), and the plan of attack is [NEXT_STEPS.md](NEXT_STEPS.md).
+The current blocker is pmgr: the full 214-domain power-domain DT hangs the kernel before any console exists. That fight is documented in [DEVLOG.md](docs/DEVLOG.md), and the plan of attack is [NEXT_STEPS.md](docs/NEXT_STEPS.md).
 
 The console deserves a sentence. M4 raw-boot has no serial port, no hypervisor tricks (SPTM killed those), and the SBU pins are a confirmed dead end on ACE3. The one path is DebugUSB/KIS through the DFU port.
 
@@ -48,14 +48,14 @@ podman exec -e DOCKCHANNEL=1 -e BUILD_DIR=/build/linux-keyboard kbuild \
     bash /out/t6040-kbuild.sh image
 ```
 
-Before touching any of this, read the pty-discipline rules in [DEVLOG.md](DEVLOG.md). The link looks completely dead if you handle the pty wrong, and we burned an hour learning that.
+Before touching any of this, read the pty-discipline rules in [DEVLOG.md](docs/DEVLOG.md). The link looks completely dead if you handle the pty wrong, and we burned an hour learning that.
 
 ## Reading order
 
 1. [AGENTS.md](AGENTS.md), the map (repos, roles, hard rules)
-2. [NEXT_STEPS.md](NEXT_STEPS.md), the work queue
-3. [DEVLOG.md](DEVLOG.md), recipes, solved blockers, dead ends
-4. [roadmap.md](roadmap.md), stages A through H, from first light to daily driver
+2. [NEXT_STEPS.md](docs/NEXT_STEPS.md), the work queue
+3. [DEVLOG.md](docs/DEVLOG.md), recipes, solved blockers, dead ends
+4. [ROADMAP.md](docs/ROADMAP.md), stages A through H, from first light to daily driver
 
 `done/` holds the finished per-topic plans and session write-ups. They're kept because the dead ends are half the value: SBU serial, RAM-dump post-mortems, and per-domain pmgr bisection are all documented graves, so nobody digs them up twice.
 

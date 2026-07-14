@@ -2,7 +2,7 @@
 
 State of the world, how to operate the rig, solved blockers, investigation
 history, and dead ends. Forward-looking work lives in `NEXT_STEPS.md`; the
-long-term plan in `roadmap.md`; per-session write-ups in `done/`.
+long-term plan in `ROADMAP.md`; per-session write-ups in `done/`.
 
 ## Current working state (2026-07-12)
 

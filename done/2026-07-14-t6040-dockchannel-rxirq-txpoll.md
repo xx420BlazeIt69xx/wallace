@@ -111,7 +111,7 @@ Only after that marker, inject exactly one LF-terminated line:
 IRQ_BIT1_PROBE
 ```
 
-The pre-registered interpretation matrix is in `NEXT_STEPS.md`; it was written
+The pre-registered interpretation matrix is in `docs/NEXT_STEPS.md`; it was written
 before the live observation. A smooth boot with cap entry 1,000 and hard entry
 1,024 already latched is a valid microsecond-scale storm capture, not grounds
 for a rerun. Recover after the report or immediately on silence. Do not retry

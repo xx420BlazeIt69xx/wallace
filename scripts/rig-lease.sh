@@ -8,7 +8,7 @@
 # agent forever. Release carries a rig-health assertion; a wedged handoff sets
 # a NEEDS_RECOVERY flag the next acquirer must clear via a recovery boot first.
 #
-# The scheduling model (see COORDINATION.md):
+# The scheduling model (see docs/COORDINATION.md):
 #   - Agents only ever hold the rig for work already APPROVED + hashed by the
 #     maintainer. Approval happens offline; never hold the cable across a human
 #     round-trip. The approved queue IS the schedule.

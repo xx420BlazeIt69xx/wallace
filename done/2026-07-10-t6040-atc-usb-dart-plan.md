@@ -1,6 +1,6 @@
 # Stage B item 4 — T6040 ATC / USB tunables + DART (kernel handoff)
 
-Written 2026-07-10, after PCIe (item 3). Companion: `roadmap.md`, the pcie plan.
+Written 2026-07-10, after PCIe (item 3). Companion: `docs/ROADMAP.md`, the pcie plan.
 Item 4 = the kboot→FDT handoff for Type-C/USB: ATC PHY tunables, USB4/ACIO
 (Thunderbolt) tunables, apciec (TB PCIe), and DART config.
 

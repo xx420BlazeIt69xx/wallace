@@ -1,7 +1,7 @@
 # Stage B item 5 — T6040 kboot FDT init
 
-Written 2026-07-10, after ATC/USB/DART audit (item 4). Companion: `roadmap.md`,
-`t6040-dt-checklist.md`. Item 5 = m1n1's kboot→FDT handoff: patch the kernel DT
+Written 2026-07-10, after ATC/USB/DART audit (item 4). Companion: `docs/ROADMAP.md`,
+`docs/t6040-dt-checklist.md`. Item 5 = m1n1's kboot→FDT handoff: patch the kernel DT
 with runtime info (carveouts, tunables, MPIDR/release-addr, firmware) before
 jumping to Linux.
 

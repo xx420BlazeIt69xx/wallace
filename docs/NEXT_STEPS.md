@@ -4,7 +4,7 @@ Handoff state (2026-07-13): mainline Linux boots to a BusyBox shell on the
 M4 Pro with working internal keyboard, watchdog, and a **fully remote dev
 loop** — two-way m1n1 proxy AND Linux shell (`/dev/ttydc0`) over one DebugUSB
 cable; reboot via `macvdmtool`. No screen-reading or physical access needed.
-Operational details, recipes, and history: `DEVLOG.md`. Long-term: `roadmap.md`.
+Operational details, recipes, and history: `DEVLOG.md`. Long-term: `ROADMAP.md`.
 Read the DebugUSB link rules in DEVLOG before touching the rig.
 
 ## 0. Attribute DockChannel-UART RX BIT(1) without relying on RX
