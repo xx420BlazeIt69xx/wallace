@@ -2,12 +2,13 @@
   "seq": "012",
   "slug": "dockchannel-irq-patch",
   "needs": "offline",
-  "state": "open",
+  "state": "done",
   "track": "console",
   "priority": "P2",
   "desc": "Draft upstream patch: dockchannel-uart per-instance IRQ masks + poll-mode (do NOT characterize IRQ 360 as dead)",
   "author": "claude",
   "deps": [],
   "hashes": null,
-  "created": 1784039023
+  "created": 1784039023,
+  "done_at": 1784046315
 }
