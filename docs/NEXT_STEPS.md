@@ -288,6 +288,17 @@ and an unconfigured GENTER entry vector, so GENTER wedges (no dispatch, no
 fault). The remaining question — whether raw boot can enter SPTM guarded state
 at all, or storage waits for upstream — is ticket 008's go/no-go.
 
+Ticket 008 go/no-go is now written (`done/2026-07-14-t6040-nvme-sptm-route-finding.md`):
+**internal NVMe under raw boot is NO-GO near-term.** M4 HW advertises GXF
+(`AIDR_EL1` bit 16), but m1n1 leaves it off (`features_m4` omits `mmu_sprr`), and
+even enabling m1n1's M1/M2-style GXF only yields m1n1-owned guarded code, not
+Apple's signed SPTM — which is what the controller's TCB/SART/queue mediation is
+anchored to. There is no documented loader transition for a third-party boot
+object to acquire genuine SPTM state; that becomes the #asahi-dev question
+(ticket 010). Daily-driver storage goes through USB-attached root (tickets
+009/031/032), which never touches the SPTM-gated internal controller. Do not
+spend rig time forcing service-6 GENTER from raw boot.
+
 Exact current transcript: `logs/t6040-console-20260714-nvme-sptm.log`.
 Full cumulative analysis: `done/2026-07-13-t6040-nvme-map.md`;
 SPTM/GENTER ABI: `done/2026-07-14-t6040-sptm-service6-abi.md`.

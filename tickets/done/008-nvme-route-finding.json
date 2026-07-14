@@ -2,12 +2,13 @@
   "seq": "008",
   "slug": "nvme-route-finding",
   "needs": "offline",
-  "state": "open",
+  "state": "done",
   "track": "storage",
   "priority": "P0",
   "desc": "Go/no-go writeup: can raw boot acquire protected exec state via a documented loader transition, or must storage wait for upstream M4 SPTM support?",
   "author": "claude",
   "deps": [],
   "hashes": null,
-  "created": 1784039023
+  "created": 1784039023,
+  "done_at": 1784043669
 }
