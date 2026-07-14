@@ -20,8 +20,10 @@ Only the **live rig** is exclusive. Coordinate that, and only that.
 ## The mechanism
 
 `scripts/rig-lease.sh` — a **lease** (not a lock): time-bounded, reclaimable if
-a holder dies or wedges the cable. State lives in `.rig/` (gitignored, shared
-between the agents via the local filesystem).
+a holder dies or wedges the cable. The lease itself lives in `.rig/`
+(gitignored, host-local, shared between agents via the filesystem); the same
+tool also manages the **ticket store** in `tickets/` (git-tracked JSON — the
+durable backlog, see below).
 
 `scripts/rig-guard.sh` is sourced by the three rig-touching scripts
 (`t6040-boot-dcuart.sh`, `t6040-debugusb-console.sh`, `t6040-bootcap-fb.sh`) and
@@ -49,12 +51,21 @@ scripts/rig-lease.sh renew    <agent>                # extend before a long step
 scripts/rig-lease.sh release  <agent> --state healthy|wedged
 scripts/rig-lease.sh recovered <agent>               # clear NEEDS_RECOVERY after a recovery boot
 
-scripts/rig-lease.sh queue add     <agent> <slug> "<desc>" [sha]   # propose an experiment
-scripts/rig-lease.sh queue approve <seq> [--by <name>]             # MAINTAINER marks it ready
-scripts/rig-lease.sh queue next                                     # lowest approved == the schedule
-scripts/rig-lease.sh queue list
-scripts/rig-lease.sh queue done    <seq>
+# the ticket store — git-tracked JSON in tickets/, offline tasks AND rig experiments:
+scripts/rig-lease.sh queue add <agent> <slug> "<desc>" --needs offline|rig [--track T --pri P1 --dep NNN]
+scripts/rig-lease.sh queue approve 001-006 --by cj   # MAINTAINER; rig tickets only, batch/ranges/all
+scripts/rig-lease.sh queue next --rig                # next approved rig experiment == the schedule
+scripts/rig-lease.sh queue next --offline            # next open offline task (no approval needed)
+scripts/rig-lease.sh queue list [--rig|--offline]
+scripts/rig-lease.sh queue show <seq>                # full JSON
+scripts/rig-lease.sh queue done <seq>
 ```
+
+Two ticket kinds. `needs: offline` (state `open`) — no rig, no approval, any
+agent grabs and does it; this is the bulk of the backlog and where parallel
+speed comes from. `needs: rig` (state `proposed`→`approved`→`done`) — needs the
+lease and CJ's batch approval. Tickets live in git (`tickets/`); the strategy/
+priorities/graves map is `BACKLOG.md`.
 
 To actually drive the rig, hold the lease and export your name so the guard
 sees it:
@@ -151,9 +162,10 @@ no `RIG_AGENT` set (i.e. CJ by hand) stays lenient on an idle rig. The
 collision block — refusing when another agent holds a live lease — is
 unconditional regardless. Set `RIG_ENFORCE=0` only to deliberately relax this.
 
-## What is NOT in `.rig/`
+## Durable vs ephemeral
 
-Durable records are unchanged: the commit log (`prepare X` → `record X`),
-`DEVLOG.md`, `NEXT_STEPS.md`, and `done/` write-ups. `.rig/` is only the live
-turn-taking board; treat it as ephemeral.
-```
+Durable, git-tracked: `tickets/` (the backlog), `BACKLOG.md`/`ROADMAP.md`
+(strategy), the commit log (`prepare X` → `record X`), `DEVLOG.md`,
+`NEXT_STEPS.md`, and `done/` write-ups. Ephemeral, gitignored, host-local:
+`.rig/` — just the lease (the mutex) and its audit log. Treat `.rig/` as
+throwaway; treat everything else as the record.

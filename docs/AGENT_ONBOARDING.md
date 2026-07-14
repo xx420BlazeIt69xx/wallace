@@ -76,24 +76,33 @@ offline work and try later.
    `scripts/rig-lease.sh recovered <you>`. Silently handing off a wedged cable is
    the one unforgivable move.
 
-## 4. The schedule = the approved queue
+## 4. The backlog: one ticket store, offline + rig
 
-The rig only ever runs *approved, hashed* experiments. Propose yours; CJ (the
-maintainer) approves; then whoever's free runs the next approved one:
+All actionable work is tickets in `tickets/` (git-tracked JSON), managed through
+the CLI. Two kinds:
 
 ```sh
-scripts/rig-lease.sh queue add <you> <slug> "what it does + key address" <sha>
-scripts/rig-lease.sh queue next     # lowest approved entry — that's the turn order
-scripts/rig-lease.sh queue done <seq> # after you've run + recorded it
+# OFFLINE work — no rig, no approval. This is most of the backlog; favour it.
+scripts/rig-lease.sh queue next --offline            # next open offline task — just grab it
+scripts/rig-lease.sh queue add <you> <slug> "<desc>" --needs offline --track T --pri P1
+
+# RIG experiments — need the lease + CJ approval.
+scripts/rig-lease.sh queue add <you> <slug> "<desc>" --needs rig --pri P1 [--dep NNN]
+scripts/rig-lease.sh queue next --rig                # next APPROVED rig experiment == the turn order
+scripts/rig-lease.sh queue done <seq>                # after you've run + recorded it
 ```
 
-Do **not** hold the lease while waiting for CJ to approve the next step — that
-starves the other agents for as long as CJ is away. Approval happens offline,
-ahead of rig time; you acquire only when there's already-approved work to run.
+The rig only ever runs *approved, hashed* experiments. Propose yours; CJ
+batch-approves (`queue approve 001-006 --by cj`); whoever's free runs the next
+approved one. Do **not** hold the lease while waiting for CJ to approve the next
+step — that starves the other agents while CJ is away. Approval happens offline,
+ahead of rig time.
 
-Auto-acquire is on and any agent may drive: when the lease is free and
-`queue next` returns approved work, take it. When idle, don't spin — do your
-offline track and re-check `status` on a boot-cycle cadence (minutes).
+When the rig is busy or you're between experiments, **pull an offline ticket** —
+that's the point of the unified store, and it never needs the lease. Auto-acquire
+is on: when the lease is free and `queue next --rig` returns approved work, take
+it. When idle, don't spin — grab offline work and re-check `status` on a
+boot-cycle cadence (minutes).
 
 ## 5. How the guard treats you
 
