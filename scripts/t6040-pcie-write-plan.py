@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Expand the J614s ADT into the exact m1n1 T6040 PCIe write plan.
+"""Expand the J614s ADT into the exact m1n1 T6040 PCIe access plan.
 
 This is a host-only review tool. It does not open a proxy connection and does
 not perform MMIO. Feed it the committed j614s.adt from the Linux tree; stdout is
-a deterministic TSV containing one row per write in pcie_init_controller().
+a deterministic TSV containing the ordered accesses in pcie_init_controller().
 """
 
 from __future__ import annotations
@@ -47,8 +47,11 @@ def main() -> int:
                         help="raw j614s.adt; stdin when omitted")
     parser.add_argument("--m1n1", type=pathlib.Path, default=DEFAULT_M1N1,
                         help="m1n1 checkout containing proxyclient/m1n1/adt.py")
-    parser.add_argument("--stop-before-ports", action="store_true",
-                        help="emit only the controller and shared-PHY prefix")
+    scope_group = parser.add_mutually_exclusive_group()
+    scope_group.add_argument("--stop-before-ports", action="store_true",
+                             help="emit only the controller and shared-PHY prefix")
+    scope_group.add_argument("--isolate-op115-read", action="store_true",
+                             help="emit operations 1-114 followed by a read-only op 115")
     args = parser.parse_args()
 
     sys.path.insert(0, str(args.m1n1 / "proxyclient"))
@@ -267,7 +270,15 @@ def main() -> int:
 
         config += 1 << 15
 
-    if args.stop_before_ports:
+    if args.isolate_op115_read:
+        if (len(writes) < 115 or writes[114].source != "apcie-phy-ip-pll-tunables"
+                or writes[114].address != 0x417040090 or writes[114].size != 4):
+            raise SystemExit("unexpected T6040 operation-115 boundary")
+        writes = writes[:114] + [Write(
+            "phy", "apcie-phy-ip-pll-tunables[0] read-only",
+            writes[114].address, writes[114].size, "READ", 0, 0,
+        )]
+    elif args.stop_before_ports:
         first_port = next((i for i, item in enumerate(writes) if item.phase.startswith("port")),
                           len(writes))
         writes = writes[:first_port]
@@ -275,11 +286,18 @@ def main() -> int:
             raise SystemExit("unexpected T6040 shared-PHY write boundary")
 
     print(f"# source_sha256\t{hashlib.sha256(data).hexdigest()}")
-    scope = "T6040 controller/shared-PHY prefix" if args.stop_before_ports else \
-            "T6040 staged-clock path"
+    if args.isolate_op115_read:
+        scope = "T6040 operation-115 read-only isolation"
+    elif args.stop_before_ports:
+        scope = "T6040 controller/shared-PHY prefix"
+    else:
+        scope = "T6040 staged-clock path"
     print(f"# scope\tm1n1 pcie_init_controller(APCIE, /arm-io/apcie0), {scope}")
-    print("# semantics\tWRITE replaces the full value; RMW is (old & ~mask) | value; "
-          "SET is old | mask; CLEAR is old & ~mask")
+    semantics = ("WRITE replaces the full value; RMW is (old & ~mask) | value; "
+                 "SET is old | mask; CLEAR is old & ~mask")
+    if args.isolate_op115_read:
+        semantics += "; READ performs no write and ignores mask/value"
+    print(f"# semantics\t{semantics}")
     print("sequence\tphase\tsource\taddress\tsize\toperation\tmask\tvalue")
     for sequence, item in enumerate(writes, 1):
         digits = item.size * 2
