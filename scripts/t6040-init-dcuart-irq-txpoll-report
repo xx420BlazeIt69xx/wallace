@@ -1,7 +1,7 @@
 #!/bin/busybox sh
-# RX-IRQ/TX-poll DockChannel attribution init. RX stays on AIC input 360 and
-# BIT(1), while TX completion is polled so an RX storm cannot suppress this
-# evidence relay.
+# RX-IRQ/TX-poll DockChannel attribution init. RX stays on AIC hwirq 360 and
+# BIT(1), while TX completion is polled so a capped RX storm cannot suppress
+# one-second FIFO and local-IRQ telemetry.
 
 /bin/busybox mount -t proc none /proc
 /bin/busybox mount -t sysfs none /sys
@@ -24,7 +24,7 @@ fi
 
 exec 9<>/dev/ttydc0
 (
-	if IFS= read -r -t 18 probe <&9; then
+	if IFS= read -r -t 24 probe <&9; then
 		/bin/busybox printf 'received=%s\n' "$probe" >/tmp/dcuart-rx-result
 	else
 		echo 'received=<none>' >/tmp/dcuart-rx-result
@@ -32,22 +32,39 @@ exec 9<>/dev/ttydc0
 ) &
 rx_pid=$!
 
+telemetry=
+for candidate in /sys/bus/platform/devices/*/irq_telemetry; do
+	if [ -r "$candidate" ]; then
+		telemetry=$candidate
+		break
+	fi
+done
+
 echo "" >&9
-echo "*** t6040 DockChannel RX-IRQ / TX-poll diagnostic ***" >&9
+echo "*** t6040 DockChannel bounded RX-IRQ telemetry ***" >&9
 /bin/busybox uname -a >&9
-echo "[irq-txpoll] RX=BIT(1); TX completion polled; storm limit=4096" >&9
+echo "[irq-txpoll] RX=BIT(1); RX cap=1000; hard cap=1024" >&9
 echo "[irq-txpoll] TX BIT(2) is never unmasked in this diagnostic" >&9
-echo "[irq-txpoll] baseline in 5 seconds; then a silent 10-second window" >&9
-echo "[irq-txpoll] wait 6 seconds, then send exactly: IRQ_BIT1_PROBE<LF>" >&9
+echo "[irq-txpoll] virq and AIC hwirq are reported separately" >&9
+
+if [ -z "$telemetry" ]; then
+	echo "[irq-txpoll] ERROR: irq_telemetry sysfs node missing" >&9
+	exec /bin/busybox sh
+fi
 
 # Let every instruction-line TX completion settle before taking the baseline.
 /bin/busybox sleep 5
 /bin/busybox cat /proc/interrupts >/tmp/interrupts-before
+echo "[irq-txpoll] sample=baseline $(/bin/busybox cat "$telemetry")" >&9
+echo "[irq-txpoll] INJECT-NOW: send exactly IRQ_BIT1_PROBE<LF>" >&9
 
-# No writes to ttydc0 occur in this interval. Any interrupt-count delta is not
-# caused by this reporter's TX traffic, and TX completion itself never uses the
-# AIC line in this diagnostic.
-/bin/busybox sleep 10
+# TX completion is polled, so these reports cannot add AIC input 360 events.
+i=1
+while [ "$i" -le 10 ]; do
+	/bin/busybox sleep 1
+	echo "[irq-txpoll] sample=$i $(/bin/busybox cat "$telemetry")" >&9
+	i=$((i + 1))
+done
 /bin/busybox cat /proc/interrupts >/tmp/interrupts-after
 
 wait "$rx_pid"
@@ -69,7 +86,7 @@ echo "--- RX result ---" >&9
 /bin/busybox cat /tmp/dcuart-rx-result >&9
 echo "--- DockChannel dmesg ---" >&9
 /bin/busybox dmesg | /bin/busybox grep -Ei \
-	'dockchannel|ttydc|mailbox|IRQ storm guard|TX completion' \
+	'dockchannel|ttydc|mailbox|IRQ mapping|TX completion' \
 	| /bin/busybox tail -60 >&9
 echo "[irq-txpoll] done; no ttydc shell was started" >&9
 

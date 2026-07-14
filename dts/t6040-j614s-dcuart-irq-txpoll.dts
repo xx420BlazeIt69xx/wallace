@@ -14,4 +14,7 @@
 
 &dockchannel_uart {
 	apple,tx-poll-mode;
+	apple,irq-telemetry;
+	apple,irq-rx-cap = <1000>;
+	apple,irq-storm-limit = <1024>;
 };

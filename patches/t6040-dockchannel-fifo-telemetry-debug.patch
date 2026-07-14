@@ -1,0 +1,235 @@
+From 470082d4b19e49179b4114c3824b9bf38d130979 Mon Sep 17 00:00:00 2001
+From: CJ Damsleth <kim@damsleth.no>
+Date: Tue, 14 Jul 2026 15:05:00 +0200
+Subject: [PATCH] mailbox: apple: expose bounded DockChannel IRQ telemetry
+
+Expose the known RX FIFO count and local IRQ registers together with driver
+counters and the Linux-virq to AIC-hwirq mapping. Cap RX at 1,000
+handled events and hard-disable the parent IRQ at 1,024 entries so an IRQ
+storm turns into a bounded, self-reporting result.
+
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
+---
+ drivers/mailbox/apple-dockchannel.c | 145 +++++++++++++++++++++++++++--
+ 1 file changed, 141 insertions(+), 4 deletions(-)
+
+--- a/drivers/mailbox/apple-dockchannel.c
++++ b/drivers/mailbox/apple-dockchannel.c
+@@ -13,6 +13,7 @@
+ #include <linux/device.h>
+ #include <linux/interrupt.h>
+ #include <linux/io.h>
++#include <linux/irq.h>
+ #include <linux/mailbox/apple-dockchannel.h>
+ #include <linux/mailbox_controller.h>
+ #include <linux/module.h>
+@@ -55,6 +56,9 @@ struct apple_dockchannel {
+ 
+ 	bool poll_mode;
+ 	bool tx_poll_mode;
++	bool irq_telemetry;
++	bool irq_rx_capped;
++	bool irq_hard_disabled;
+ 	bool poll_running;
+ 	struct delayed_work poll_work;
+ 	struct delayed_work tx_poll_work;
+@@ -65,6 +69,17 @@ struct apple_dockchannel {
+ 	u32 irq_rx;
+ 	u32 irq_count;
+ 	u32 irq_storm_limit;
++	u32 irq_rx_cap;
++	u32 irq_rx_count;
++	u32 irq_tx_count;
++	u32 irq_none_count;
++	u32 irq_cap_total;
++	u32 irq_cap_flag;
++	u32 irq_cap_fifo_count;
++	u32 irq_cap_mask;
++	u32 irq_hard_total;
++	u32 irq_hard_flag;
++	u32 irq_hard_fifo_count;
+ 
+ 	const u8 *tx_buf;
+ 	size_t tx_len;
+@@ -288,19 +303,41 @@ static irqreturn_t apple_dockchannel_irq(int irq, void *data)
+ 	flags = readl_relaxed(dc->irq_base + IRQ_FLAG);
+ 
+ 	spin_lock(&dc->lock);
+-	if (dc->irq_storm_limit && ++dc->irq_count > dc->irq_storm_limit) {
++	dc->irq_count++;
++	if (dc->irq_storm_limit && dc->irq_count >= dc->irq_storm_limit) {
++		dc->irq_hard_total = dc->irq_count;
++		dc->irq_hard_flag = flags;
++		dc->irq_hard_fifo_count =
++			readl_relaxed(dc->data_base + DATA_RX_COUNT);
++		dc->irq_hard_disabled = true;
+ 		dc->irq_mask = 0;
+ 		writel_relaxed(0, dc->irq_base + IRQ_MASK);
+ 		spin_unlock(&dc->lock);
+ 		disable_irq_nosync(irq);
+-		dev_err(dc->dev, "IRQ storm guard tripped after %u interrupts\n",
+-			dc->irq_storm_limit);
+ 		return IRQ_HANDLED;
+ 	}
+ 
+ 	pending = flags & dc->irq_mask & (dc->irq_tx | dc->irq_rx);
+-	if (!pending)
++	if (!pending) {
++		dc->irq_none_count++;
+ 		goto out_unlock_none;
++	}
++
++	if (pending & dc->irq_tx)
++		dc->irq_tx_count++;
++	if (pending & dc->irq_rx) {
++		dc->irq_rx_count++;
++		if (dc->irq_rx_cap && dc->irq_rx_count == dc->irq_rx_cap) {
++			dc->irq_cap_total = dc->irq_count;
++			dc->irq_cap_flag = flags;
++			dc->irq_cap_fifo_count =
++				readl_relaxed(dc->data_base + DATA_RX_COUNT);
++			dc->irq_rx_capped = true;
++			apple_dockchannel_irq_disable(dc, dc->irq_rx);
++			dc->irq_cap_mask =
++				readl_relaxed(dc->irq_base + IRQ_MASK);
++		}
++	}
+ 
+ 	if (pending & dc->irq_tx) {
+ 		if (apple_dockchannel_tx_empty(dc)) {
+@@ -410,10 +447,87 @@ apple_dockchannel_of_xlate(struct mbox_controller *mbox,
+ 	return &mbox->chans[0];
+ }
+ 
++static ssize_t irq_telemetry_show(struct device *dev,
++				  struct device_attribute *attr, char *buf)
++{
++	struct apple_dockchannel *dc = dev_get_drvdata(dev);
++	struct irq_data *irqd = irq_get_irq_data(dc->irq);
++	unsigned long lock_flags;
++	u32 irq_count;
++	u32 irq_rx_count;
++	u32 irq_tx_count;
++	u32 irq_none_count;
++	u32 irq_rx_capped;
++	u32 irq_cap_total;
++	u32 irq_cap_flag;
++	u32 irq_cap_fifo_count;
++	u32 irq_cap_mask;
++	u32 irq_hard_disabled;
++	u32 irq_hard_total;
++	u32 irq_hard_flag;
++	u32 irq_hard_fifo_count;
++	u32 post_cap;
++	u32 rx_count;
++	u32 irq_flag;
++	u32 irq_mask;
++	ssize_t len;
++
++	rx_count = readl_relaxed(dc->data_base + DATA_RX_COUNT);
++	irq_flag = readl_relaxed(dc->irq_base + IRQ_FLAG);
++	irq_mask = readl_relaxed(dc->irq_base + IRQ_MASK);
++
++	spin_lock_irqsave(&dc->lock, lock_flags);
++	irq_count = dc->irq_count;
++	irq_rx_count = dc->irq_rx_count;
++	irq_tx_count = dc->irq_tx_count;
++	irq_none_count = dc->irq_none_count;
++	irq_rx_capped = dc->irq_rx_capped;
++	irq_cap_total = dc->irq_cap_total;
++	irq_cap_flag = dc->irq_cap_flag;
++	irq_cap_fifo_count = dc->irq_cap_fifo_count;
++	irq_cap_mask = dc->irq_cap_mask;
++	irq_hard_disabled = dc->irq_hard_disabled;
++	irq_hard_total = dc->irq_hard_total;
++	irq_hard_flag = dc->irq_hard_flag;
++	irq_hard_fifo_count = dc->irq_hard_fifo_count;
++	spin_unlock_irqrestore(&dc->lock, lock_flags);
++	post_cap = irq_cap_total ? irq_count - irq_cap_total : 0;
++
++	len = sysfs_emit(buf,
++			 "virq=%d hwirq=%lu rx_count=%#x irq_flag=%#x irq_mask=%#x ",
++			 dc->irq, irqd_to_hwirq(irqd), rx_count, irq_flag,
++			 irq_mask);
++	len += sysfs_emit_at(buf, len,
++			     "total=%u rx=%u tx=%u none=%u capped=%u cap_total=%u ",
++			     irq_count, irq_rx_count, irq_tx_count, irq_none_count,
++			     irq_rx_capped, irq_cap_total);
++	len += sysfs_emit_at(buf, len,
++			     "cap_flag=%#x cap_fifo=%#x cap_mask=%#x post_cap=%u ",
++			     irq_cap_flag, irq_cap_fifo_count, irq_cap_mask,
++			     post_cap);
++	len += sysfs_emit_at(buf, len,
++			     "hard=%u hard_total=%u hard_flag=%#x hard_fifo=%#x\n",
++			     irq_hard_disabled, irq_hard_total, irq_hard_flag,
++			     irq_hard_fifo_count);
++
++	return len;
++}
++static DEVICE_ATTR_RO(irq_telemetry);
++
++static struct attribute *apple_dockchannel_telemetry_attrs[] = {
++	&dev_attr_irq_telemetry.attr,
++	NULL,
++};
++
++static const struct attribute_group apple_dockchannel_telemetry_group = {
++	.attrs = apple_dockchannel_telemetry_attrs,
++};
++
+ static int apple_dockchannel_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+ 	struct apple_dockchannel *dc;
++	struct irq_data *irqd;
+ 	int ret;
+ 
+ 	dc = devm_kzalloc(dev, sizeof(*dc), GFP_KERNEL);
+@@ -429,6 +543,8 @@ static int apple_dockchannel_probe(struct platform_device *pdev)
+ 	of_property_read_u32(dev->of_node, "apple,irq-rx-mask", &dc->irq_rx);
+ 	of_property_read_u32(dev->of_node, "apple,irq-storm-limit",
+ 			     &dc->irq_storm_limit);
++	of_property_read_u32(dev->of_node, "apple,irq-rx-cap",
++			     &dc->irq_rx_cap);
+ 	if (!dc->irq_tx || !dc->irq_rx || (dc->irq_tx & dc->irq_rx))
+ 		return dev_err_probe(dev, -EINVAL, "invalid IRQ masks %#x/%#x\n",
+ 				     dc->irq_tx, dc->irq_rx);
+@@ -454,8 +570,15 @@ static int apple_dockchannel_probe(struct platform_device *pdev)
+ 	dc->poll_mode = of_property_read_bool(dev->of_node, "apple,poll-mode");
+ 	dc->tx_poll_mode = of_property_read_bool(dev->of_node,
+ 						 "apple,tx-poll-mode");
++	dc->irq_telemetry = of_property_read_bool(dev->of_node,
++						  "apple,irq-telemetry");
+ 	if (dc->poll_mode && dc->tx_poll_mode)
+ 		return dev_err_probe(dev, -EINVAL, "conflicting poll modes\n");
++	if (dc->irq_telemetry && (!dc->tx_poll_mode || dc->poll_mode ||
++				  !dc->irq_rx_cap || !dc->irq_storm_limit ||
++				  dc->irq_rx_cap >= dc->irq_storm_limit))
++		return dev_err_probe(dev, -EINVAL,
++			"IRQ telemetry requires RX IRQ, TX poll, and ordered caps\n");
+ 	INIT_DELAYED_WORK(&dc->poll_work, apple_dockchannel_poll_work);
+ 	INIT_DELAYED_WORK(&dc->tx_poll_work, apple_dockchannel_tx_poll_work);
+ 	if (dc->tx_poll_mode)
+@@ -478,6 +601,20 @@ static int apple_dockchannel_probe(struct platform_device *pdev)
+ 
+ 		disable_irq(dc->irq);
+ 	}
++	if (dc->irq_telemetry) {
++		irqd = irq_get_irq_data(dc->irq);
++		if (!irqd)
++			return dev_err_probe(dev, -EINVAL, "missing IRQ data\n");
++		dev_info(dev,
++			 "IRQ mapping: Linux virq=%d AIC hwirq=%lu; RX cap=%u hard cap=%u\n",
++			 dc->irq, irqd_to_hwirq(irqd), dc->irq_rx_cap,
++			 dc->irq_storm_limit);
++		ret = devm_device_add_group(dev,
++					    &apple_dockchannel_telemetry_group);
++		if (ret)
++			return dev_err_probe(dev, ret,
++					     "failed to add IRQ telemetry\n");
++	}
+ 
+ 	dc->chan.con_priv = dc;
+ 	dc->controller.dev = dev;
+-- 
+2.47.1

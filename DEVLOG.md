@@ -215,11 +215,24 @@ stalled the shared IRQ-driven TX completion path or tripped the storm guard,
 but is not direct proof because the guard message could no longer be relayed.
 Full result: `done/2026-07-14-t6040-dockchannel-irq-tx-report.md`.
 
-Do not publish the old result as a hardware erratum yet. The next diagnostic
-must make TX completion independent of the AIC line, then self-report the AIC
-and driver-handler state without depending on the broken RX path. Remaining
-routing questions include whether the line is fused off on the chopped die,
-routed to AOP, or KIS-agent-only.
+Do not publish the old result as a hardware erratum yet. The unrun replacement
+now makes TX completion independent of the AIC line, samples the FIFO count and
+local IRQ flag/mask once per second, masks RX at event 1,000, and hard-disables
+the Linux virq at absolute handler entry 1,024. It snapshots both the local flag
+and FIFO count at each cap. The DT's AIC input 360, the old AIC HW_STATE scan's
+input 360, and telemetry's translated hwirq 360 are the same hardware number;
+`/proc/interrupts` instead displays the allocated Linux virq. Exact artifacts,
+the pre-registered interpretation matrix, and the new approval gate are in
+`done/2026-07-14-t6040-dockchannel-rxirq-txpoll.md` and `NEXT_STEPS.md`.
+
+ACK-order audit: safe m1n1 `a61fd099` never touches the UART IRQ mask/flag
+block, so it cannot leave BIT(3) set before handoff. The older working
+DockChannel/HID driver uses RX BIT(1), W1C-acks and masks the child before its
+thread reads and consumes the packet, then re-arms RX. The current mailbox
+driver W1C-acks but leaves RX locally unmasked while waking its drain thread.
+The bounded run tests whether that reassertion stops on mask. Remaining routing
+questions only matter if bytes and corrected local pending exist with no
+mapped AIC count.
 
 MMIO caution: the dockchannel-uart block maps ONLY +0xc000 (irq, 24 B) and
 +0x28000..+0x38004 (config/data). Reading other offsets (e.g. +0x20000) raises

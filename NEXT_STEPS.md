@@ -25,11 +25,47 @@ timing strongly suggests the RX event stalled the shared IRQ-driven TX
 completion path or tripped the guard. Exact result:
 `done/2026-07-14-t6040-dockchannel-irq-tx-report.md`.
 
-A separate diagnostic that leaves RX interrupt-driven on BIT(1) but polls TX
-completion is now built. It retains the 4,096-entry guard, never unmasks TX
-BIT(2), and polls only the existing `DATA_TX_FREE` register while TX is active.
-This should preserve the evidence relay even if the RX guard disables IRQ 360.
-Exact hashes, MMIO delta, interpretation, and fresh approval gate:
+A replacement diagnostic is built but has not run. It leaves RX
+interrupt-driven on BIT(1), never unmasks TX BIT(2), and polls only the existing
+`DATA_TX_FREE` register while TX is active. The hard handler latches the raw
+local `IRQ_FLAG` and `DATA_RX_COUNT` at RX event 1,000, masks BIT(1), and then
+hard-disables the Linux parent IRQ at absolute handler entry 1,024 if entries
+continue. Both stages retain independent FIFO snapshots. Userspace reports the
+current FIFO count, raw local flag/mask, all latches and counters once per
+second over polled TX, followed by `/proc/interrupts`. The output also reports
+Linux virq and AIC hwirq separately.
+
+The number spaces are pre-checked: the DT specifies AIC input 360, the AIC
+domain translates die-0 input 360 to numeric hwirq 360, and the old 0..4095
+scan sampled that same AIC HW_STATE input. `/proc/interrupts` displays a Linux
+virq instead, so its printed row must be joined to telemetry's `virq=N
+hwirq=360`; a zero count without that join is not evidence.
+
+The ACK/read-order audit is also pre-run evidence. Safe m1n1 commit `a61fd099`
+only accesses the UART data FIFO and never touches its IRQ mask/flag block, so
+it cannot leave BIT(3) set before handoff. The older working DockChannel/HID
+stack uses RX BIT(1), W1C-acks the child IRQ in its irqchip, masks RX in its
+hard handler, and only afterward reaches its threaded/data-consumption path.
+The current mailbox driver instead W1C-acks RX and wakes its thread while RX
+remains unmasked. Thus the diagnostic preserves its existing W1C semantics and
+tests whether reassertion stops when RX is masked; it does not assume that
+drain-first is required.
+
+Pre-registered interpretation matrix (fill in once, after the approved run):
+
+| Cap/flag | Post-mask result | FIFO movement | Pre-registered conclusion |
+|---|---|---|---|
+| no cap; `total=0`; current `rx_count>0`, raw `irq_flag&2` | no `/proc/interrupts` delta on the telemetry-mapped virq | bytes present | local RX condition exists but AIC hwirq 360 is silent: clean dead-line/erratum evidence |
+| no cap; small RX count | stabilizes below 1,000 | FIFO drains and probe is delivered | corrected RX IRQ works; old dead-IRQ claim is withdrawn |
+| no cap; no RX count/flag | no delta | FIFO remains zero after injection | bytes did not reach this build; investigate mask-write or pre-handoff perturbation, not AIC delivery |
+| cap at RX 1,000 with `cap_flag&2`; `hard=0` | `post_cap` stabilizes near zero and `cap_mask=0` | either | RX-data-triggered storm is real, but local masking stops it; repair completion/ACK handling |
+| cap at RX 1,000; hard-disable at total 1,024 | `post_cap=24`, `hard=1`, flag remains asserted | `hard_fifo > cap_fifo` | bytes continued arriving during the masked storm; sticky source remains coupled to FIFO data flow |
+| cap at RX 1,000; hard-disable at total 1,024 | `post_cap=24`, `hard=1`, flag remains asserted | `hard_fifo == cap_fifo` | storm is decoupled from new data after masking; reproduce sticky/reasserted BIT(1) and audit flag semantics |
+
+A clean, immediate boot with both cap latches set is an expected successful
+capture: entries 1,000 through 1,024 may complete in microseconds. Read the
+telemetry and do not rerun merely because no visible stall occurred. Exact
+hashes, MMIO delta, audit, and the fresh approval gate are recorded in
 `done/2026-07-14-t6040-dockchannel-rxirq-txpoll.md`.
 
 Keep the standard 5 ms full-poll mode everywhere except this separate

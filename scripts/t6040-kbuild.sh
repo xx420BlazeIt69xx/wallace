@@ -592,8 +592,22 @@ if [ "${DOCKCHANNEL:-0}" = "1" ]; then
             git apply --check /out/t6040-dockchannel-tx-poll-debug.patch || true
             exit 1
         fi
+        echo "== apply bounded DockChannel FIFO/IRQ telemetry =="
+        if grep -q 'apple,irq-telemetry' drivers/mailbox/apple-dockchannel.c; then
+            echo "t6040-dockchannel-fifo-telemetry-debug.patch already applied"
+        elif git apply --check /out/t6040-dockchannel-fifo-telemetry-debug.patch 2>/dev/null; then
+            git apply /out/t6040-dockchannel-fifo-telemetry-debug.patch
+            echo "t6040-dockchannel-fifo-telemetry-debug.patch applied OK"
+        else
+            echo "ERROR: t6040-dockchannel-fifo-telemetry-debug.patch does not apply cleanly:"
+            git apply --check /out/t6040-dockchannel-fifo-telemetry-debug.patch || true
+            exit 1
+        fi
     elif grep -q 'apple,tx-poll-mode' drivers/mailbox/apple-dockchannel.c; then
         echo "== remove DockChannel RX-IRQ/TX-poll diagnostic split =="
+        if grep -q 'apple,irq-telemetry' drivers/mailbox/apple-dockchannel.c; then
+            git apply -R /out/t6040-dockchannel-fifo-telemetry-debug.patch
+        fi
         git apply -R /out/t6040-dockchannel-tx-poll-debug.patch
     fi
     # Local fix: add the missing hid_ll_driver .stop (NULL-deref oops on t6040,
