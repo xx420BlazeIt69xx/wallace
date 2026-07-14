@@ -28,15 +28,15 @@ between the agents via the local filesystem).
 enforces the lease. Its semantics are chosen so it protects a holder without
 ever false-positiving an idle run:
 
-- **A live lease held by the OTHER agent → always REFUSE (exit 5).** This is the
-  only case that corrupts the KIS link, so it is unconditional. `RIG_BYPASS=1`
-  overrides it — for genuine manual recovery only.
-- **Idle rig (no lease, or the holder's lease expired) → PROCEED.** A solo run
-  on an idle rig is never blocked, so an agent that hasn't adopted the lease
-  yet is not broken by the guard.
-- **Soft nudges** ("you didn't acquire", "your lease expired", "needs
-  recovery") only WARN and proceed — unless you set `RIG_ENFORCE=1`, which makes
-  them fatal too. Flip that on globally once both agents reliably acquire first.
+- **A live lease held by another agent → always REFUSE (exit 5).** This is the
+  only case that corrupts the KIS link, so it is unconditional (independent of
+  `RIG_ENFORCE`). `RIG_BYPASS=1` overrides it — for genuine manual recovery only.
+- **An identified agent (`RIG_AGENT` set) driving without its own live lease →
+  REFUSE under enforcement, which is the default.** This makes acquire-first
+  mandatory and keeps `status` trustworthy. `RIG_ENFORCE=0` relaxes it to a warn.
+- **A manual run with no `RIG_AGENT` (i.e. CJ by hand) → PROCEED on an idle
+  rig** (with a note). Enforcement never blocks a human's solo run; only the
+  collision case above stops it.
 
 So the discipline is: **`RIG_AGENT=<you> scripts/rig-lease.sh acquire` before
 driving.** If you skip it on an idle rig you'll get a warning but proceed; if
@@ -118,14 +118,38 @@ the reviewing agent in the queue entry's `desc`. CJ approves last.
 
 ## Roles
 
-| Who | Owns |
-|---|---|
-| `claude` | (fill in — e.g. PCIe op-115 + DockChannel UART IRQ) |
-| `sol` | (fill in — e.g. NVMe SPTM / queue ownership) |
-| maintainer (CJ) | approves queue entries; arbitrates cross-track merges; posts externally |
+Primary focus, **not exclusive ownership** — so that if one agent runs out of
+tokens or goes away, the other can pick up its track without waiting on anyone.
 
-One agent must own the `m1n1` ↔ `m1n1-clean` sync (per AGENTS.md) so the
-curated series can't diverge. Assign it above.
+| Who | Primary focus |
+|---|---|
+| `claude` | PCIe op-115 + DockChannel UART IRQ |
+| `sol` | NVMe SPTM / queue ownership |
+| maintainer (CJ) | approves queue entries; arbitrates; posts externally |
+
+**`m1n1` ↔ `m1n1-clean` sync has no fixed owner.** Whoever last changed `m1n1`
+`src/` mirrors it into the curated `m1n1-clean` `t6040-bringup` series in the
+same session. A fixed owner would deadlock everyone else the moment that agent
+disappears mid-work — the same reason the rig uses a reclaimable lease, not a
+lock. The cost is that two agents touching `src/` close together must
+reconcile; keep such edits announced in the queue `desc` or a commit note.
+
+## Committing
+
+Linear history on `main`, no per-agent attribution. Every commit is authored
+and signed off as the maintainer — `git commit -s`, `Signed-off-by: CJ Damsleth
+<kim@damsleth.no>`, **no `Co-Authored-By` trailer** (keeps the m1n1/kernel
+series upstream-clean). Use the existing topic-prefix style (`dockchannel:`,
+`pcie:`, `docs:`, `rig:`) and the `prepare X` → `record X` two-phase pattern;
+who did what is read from the commit content, not a trailer.
+
+## Enforcement
+
+`RIG_ENFORCE` defaults to **on**: an identified agent (one that set `RIG_AGENT`)
+that drives without a live lease is refused, not just warned. A manual run with
+no `RIG_AGENT` set (i.e. CJ by hand) stays lenient on an idle rig. The
+collision block — refusing when another agent holds a live lease — is
+unconditional regardless. Set `RIG_ENFORCE=0` only to deliberately relax this.
 
 ## What is NOT in `.rig/`
 

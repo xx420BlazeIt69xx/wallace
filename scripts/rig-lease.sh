@@ -36,7 +36,10 @@ QUEUE_DIR="$RIG_ROOT/queue"
 DONE_DIR="$RIG_ROOT/done"
 AUDIT_LOG="$RIG_ROOT/log"
 RECOVERY_FLAG="$RIG_ROOT/NEEDS_RECOVERY"
-TTL="${RIG_LEASE_TTL:-1800}"         # seconds; generous vs a boot cycle (~5-10m)
+TTL="${RIG_LEASE_TTL:-3600}"         # seconds (60m); covers a boot cycle plus a
+                                     # long analysis hold. Still release before
+                                     # lengthy OFFLINE work — the lease is for
+                                     # rig-touching, not for thinking. renew to extend.
 
 now() { date +%s; }
 mkdirs() { mkdir -p "$RIG_ROOT" "$QUEUE_DIR" "$DONE_DIR"; }

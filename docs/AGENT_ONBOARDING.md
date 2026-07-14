@@ -10,13 +10,15 @@ rig, and this note is how to take turns on it. Full protocol: COORDINATION.md.
 
 Choose a short, unique lower-case handle for yourself (your model name is fine,
 e.g. `gemini`, `grok`, `qwen`) — distinct from any handle already in use. Use it
-everywhere below as `<you>`. Export it in the shell you drive the rig from, and,
-because the other agents are already onboarded, run in strict mode:
+everywhere below as `<you>`, and export it in the shell you drive the rig from:
 
 ```sh
 export RIG_AGENT=<you>      # who the guard thinks you are
-export RIG_ENFORCE=1        # make "you forgot to acquire" fatal, not just a warning
 ```
+
+Enforcement is on by default: once you've set `RIG_AGENT`, the rig scripts will
+**refuse** to run unless you hold a live lease (so you can't forget to acquire).
+Don't set `RIG_ENFORCE=0` — that's the relax switch, for CJ's manual use only.
 
 Commits here always go out under the maintainer's identity — `git commit -s`
 with `Signed-off-by: CJ Damsleth <kim@damsleth.no>`, and **no** `Co-Authored-By`
@@ -101,14 +103,13 @@ offline track and re-check `status` on a boot-cycle cadence (minutes).
   (exit 5) — this stops you from corrupting the link. Wait, or check
   `scripts/rig-lease.sh status`. (`RIG_BYPASS=1` overrides, for manual recovery
   only.) This block is unconditional; it does not depend on `RIG_ENFORCE`.
-- If the **rig is idle**, the scripts run even if you forgot to acquire — with
-  `RIG_ENFORCE=1` (which you set in §0) that omission is fatal instead; without
-  it you'd only get a warning. Either way the guard never breaks a solo run on
-  an idle rig — it only blocks a real collision.
+- If the **rig is idle** but you (an identified agent, `RIG_AGENT` set) haven't
+  acquired, the scripts **refuse** — enforcement is on by default, so you can't
+  forget to take the lease. A manual run with no `RIG_AGENT` (CJ by hand) is the
+  only thing that proceeds on an idle rig without a lease.
 
-Transition caveat: **`status` only reflects an agent that actually took a
-lease.** If someone drives without acquiring, `status` still says FREE — so
-until every agent acquires every time, keep coordinating out-of-band too.
+Because enforcement makes every agent acquire before driving, `status` is a
+trustworthy picture of who holds the rig — provided nobody sets `RIG_ENFORCE=0`.
 
 ## 6. Before a live image goes to CJ for approval
 

@@ -2,32 +2,32 @@
 # rig-guard.sh — sourced by every rig-touching script so the lease is binding,
 # not honor-system: two agents can never drive the one physical cable at once.
 #
-# SAFETY MODEL — block real collisions, never block an idle rig.
-#   * If a LIVE lease is held by someone OTHER than you (or you're anonymous),
-#     REFUSE (exit 5) — always, even in soft mode. This is the only situation
-#     that actually corrupts the KIS link, so it is unconditionally fatal. The
-#     RIG_BYPASS escape hatch still overrides it for genuine manual recovery.
-#   * If the rig is FREE (no lease, or the holder's lease has expired = the
-#     holder is gone), PROCEED. An idle rig is safe to drive, so a solo run by
-#     an agent that hasn't adopted the lease is never broken by this guard.
-#   * The softer nudges ("you didn't acquire", "your lease expired",
-#     "needs recovery") only WARN — unless you opt into strict mode with
-#     RIG_ENFORCE=1, which makes them fatal too.
+# SAFETY MODEL — block real collisions and hold identified agents to
+# acquire-first, without ever blocking a human's manual run on an idle rig.
+#   * If a LIVE lease is held by someone OTHER than you, REFUSE (exit 5) —
+#     always, regardless of RIG_ENFORCE. This is the only situation that
+#     actually corrupts the KIS link, so it is unconditionally fatal.
+#     RIG_BYPASS=1 still overrides it, for genuine manual recovery.
+#   * If you are an IDENTIFIED agent (RIG_AGENT set) driving without a live
+#     lease of your own, REFUSE under enforcement (the default). This is what
+#     makes acquire-first mandatory and keeps `status` trustworthy.
+#   * If RIG_AGENT is UNSET (a human running by hand), stay lenient: WARN and
+#     proceed on an idle rig. A manual run is never blocked by enforcement;
+#     only the collision case above stops it.
 #
-# This is what makes it safe to wire into the live scripts before both agents
-# have fully adopted the lease: it protects a holder from the other agent, but
-# it cannot false-positive an idle-rig run into a broken experiment.
+# Enforcement is ON by default (RIG_ENFORCE defaults to 1). Set RIG_ENFORCE=0
+# to relax the acquire-first nudges back to warnings.
 #
 # Contract (set BEFORE `source`-ing this):
-#   RIG_AGENT              who you are ("claude", "sol", "maintainer").
-#   RIG_ENFORCE=1          strict: the soft nudges exit 5 instead of warning.
+#   RIG_AGENT              who you are ("claude", "sol"); unset = manual/human.
+#   RIG_ENFORCE=0          relax: acquire-first nudges warn instead of refusing.
 #   RIG_ALLOW_RECOVERY=1   set by the recovery-boot script; lets it run while
 #                          NEEDS_RECOVERY is set (fixing the link is its job).
 #   RIG_BYPASS=1           escape hatch; skips the check entirely (loud).
 _rig_guard() {
   local root="${RIG_ROOT:-$HOME/Code/wallace/.rig}"
   local lease="$root/lease.env" flag="$root/NEEDS_RECOVERY" self="${RIG_AGENT:-}"
-  local strict="${RIG_ENFORCE:-0}"
+  local strict="${RIG_ENFORCE:-1}"
   if [ "${RIG_BYPASS:-0}" = 1 ]; then
     echo "rig-guard: BYPASS set — skipping lease check." >&2; return 0
   fi
@@ -46,14 +46,17 @@ _rig_guard() {
     exit 5
   fi
 
-  # deny(reason): fatal only in strict mode; otherwise warn and proceed.
+  # deny(reason): fatal under enforcement; otherwise warn and proceed.
   _deny() {
     if [ "$strict" = 1 ]; then echo "rig-guard: REFUSE — $1" >&2; exit 5
     else echo "rig-guard: WARN — $1 (proceeding; RIG_ENFORCE=1 makes this fatal)" >&2; fi
   }
 
   if [ -z "$self" ]; then
-    _deny "RIG_AGENT unset; acquire first: scripts/rig-lease.sh acquire <agent> \"<task>\" [sha]"; return 0
+    # Unidentified = a human by hand. Never block on an idle rig (the collision
+    # case above already handled a live other-holder). Just note it.
+    echo "rig-guard: note — no RIG_AGENT set; treating as a manual run. Agents must set RIG_AGENT and acquire a lease." >&2
+    return 0
   fi
   if [ "$holder" != "$self" ]; then
     # rig is free but you didn't acquire (or your own lease expired)
