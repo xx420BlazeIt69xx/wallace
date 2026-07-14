@@ -496,6 +496,31 @@ offline. Full review and result:
 
 Full details are in `done/2026-07-14-t6040-wireless-pcie-map.md`.
 
+### m1n1 fork synced with AsahiLinux upstream (2026-07-14)
+
+`~/Code/m1n1` main merged `origin/main` (which had merged AsahiLinux main on
+GitHub) → merge commit `2df4f278`, pushed to the fork. Eight upstream commits
+came in; none overlap the local T6040 work (no local commit touches `src/hv.c`
+or `proxyclient/m1n1/hv/`):
+
+- `src/chickens_*.c` moved to `src/chickens/*.c` (**`src/chickens.c` stays at
+  top level**, so the curated `t6040-bringup` chickens.c patch is unaffected);
+  Makefile updated to match.
+- hv + proxyclient/hv now gate SPRR/GXF/AMX writes on
+  `apple_sysregs_unlocked` and handle RVBAR when locked (yuka) — upstream is
+  making the hypervisor tolerate locked-sysreg raw-boot machines like this
+  one. Whether a degraded hv is actually usable on the T6040 is untested here.
+- `proxyclient/hv: add CPUSTART for T8132,T8140,T6034,T6040` (yuka
+  `0ec216de`): T6040 CPUSTART = `0x88000`, independently matching the constant
+  this project validated in Stage A (`CPU_START_OFF_T6031`).
+
+`make -j8` verified on the M1 host post-merge (all four artifacts). **The
+merged main is NOT rig-tested** — hash-pinned experiment images (e.g. ticket
+002's `d1494f5a` bin `5616b05f`) predate the merge; treat `2df4f278` builds as
+a new image lineage for pinning purposes. The `t6040-bringup` worktree
+(`m1n1-clean`) is still based on pre-merge upstream; its rebase onto merged
+main is scoped under ticket 046.
+
 ### Watchdog (2026-07-11)
 Linux `apple_wdt` takes over m1n1's WD1; BusyBox pings `/dev/watchdog0` every
 10 s. m1n1 arms WD1 for ~20 s on M4 before handoff (`src/kboot.c`,

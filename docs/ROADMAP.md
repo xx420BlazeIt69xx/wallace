@@ -55,7 +55,8 @@ fixed, dapf gate + watchdog arm added for M4.
 **Upstreaming pending**: SMP/broken_wfi/MPIDR + cpufreq drafts (in `done/`);
 dockchannel-uart per-instance IRQ masks + poll-mode patch to the
 dockchannel-branch authors (do not characterize IRQ 360 as dead yet); curated
-code-only branch `t6040-bringup` tracks main's src/.
+code-only branch `t6040-bringup` tracks main's src/ (main merged AsahiLinux
+upstream 2026-07-14 at `2df4f278`; rebase of the curated branch is ticket 046).
 
 One structural constraint colors everything below: **M4 = raw boot only** (SPTM
 owns the mach-o path). Apple-private sysregs are locked. Linux itself doesn't
@@ -64,7 +65,11 @@ on this machine — the classic Asahi reverse-engineering tool (`hv` + tracers) 
 crippled on M4. Reverse engineering of new hardware blocks largely has to happen
 on M1/M2/M3 machines upstream, or via static ADT/firmware analysis. This is the
 single biggest reason most of Stages E–G are "track upstream" rather than "build
-it here".
+it here". *Watch this space: upstream m1n1 (merged 2026-07-14) now gates hv's
+SPRR/GXF/AMX use on `apple_sysregs_unlocked` and knows the T6040 CPUSTART —
+yuka appears to be making hv tolerate locked-sysreg machines. A degraded hv on
+the T6040 is untested here, but if it becomes viable it would reopen (some)
+tracing on this rig.*
 
 ## Stage map
 
@@ -90,7 +95,10 @@ A→D are sequential. E/F/G parallelize after D. H wraps it all.
 - [x] `chainload.py -r build/m1n1.bin` reliable → ~10-second dev loop, kmutil retired
       **(done 2026-07-10, build chain fixed)**
 - [ ] Upstream: confirmed constants, features_m4/broken_wfi notes, raw-boot doc note
-      *(residual — draft ready in `2026-07-10-t6040-smp-writeup.md`)*
+      *(residual — draft ready in `2026-07-10-t6040-smp-writeup.md`; partially
+      overtaken 2026-07-14: upstream m1n1 now carries T6040 CPUSTART `0x88000`
+      in proxyclient/hv via yuka `0ec216de`, independently confirming our
+      constant — the broken_wfi/features_m4 notes remain ours to send)*
 
 **Exit:** ✅ proxy stable across reboots, 14/14 cores. (chainload dev loop + upstream
 carry forward as small residuals; neither blocks Stage B.)
