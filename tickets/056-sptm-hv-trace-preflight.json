@@ -1,0 +1,13 @@
+{
+  "seq": "056",
+  "slug": "sptm-hv-trace-preflight",
+  "needs": "offline",
+  "state": "open",
+  "track": "storage",
+  "priority": "P1",
+  "desc": "Offline preflight for ticket 053 (SPTM HV genter-trace), following the preflight->cross-review->approve->gated-run pattern (cf. 034->005, 044). Deliverables: (1) m1n1 HV-GXF-on-M4 feasibility note + a minimal DRAFT patch setting .mmu_sprr for features_m4 (currently OFF, chickens.c:112 'XXX figure out') and verifying the gxf_init/supports_gxf path -- draft only, NOT flashed, it is the maintainer-gated CPU-feature change; (2) HV genter-interposition design -- resolve whether a guest EL1->GL genter is observable from EL2 or needs GXF_CONFIG/ENTER MSR trapping (m1n1 hv SPRR/GXF path is gated on apple_sysregs_unlocked = false on locked-sysreg T6040); (3) rewrite asahi_neo probe_sptm.py for the x16 descriptor + m1n1 hv API (JSON log of domain/table/endpoint + x0..x7 + guest ELR); (4) cross-review packet + hashes + stop points. Read-only trace; no SPTM calls/MMIO writes from m1n1; internal SSD untouched. Plan: done/2026-07-15-t6040-sptm-hv-trace-preflight.md. Blocks 053; relates to 046 (m1n1 series) and 051 (arg cross-check)",
+  "author": "fable",
+  "deps": ["046"],
+  "hashes": null,
+  "created": 1784066858
+}
