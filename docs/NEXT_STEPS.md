@@ -50,7 +50,7 @@ diff the probe/startup IRQ-block writes and RX_THRESH timing between the two
 builds and analyze the dock-side KIS agent's flow-control interaction with
 AP-side IRQ_MASK state.
 
-The ACK/read-order audit is also pre-run evidence. Safe m1n1 commit `a61fd099`
+The ACK/read-order audit is also pre-run evidence. Safe m1n1 commit `eed11760`
 only accesses the UART data FIFO and never touches its IRQ mask/flag block, so
 it cannot leave BIT(3) set before handoff. The older working DockChannel/HID
 stack uses RX BIT(1), W1C-acks the child IRQ in its irqchip, masks RX in its
@@ -124,7 +124,7 @@ early `APCIE_PHY_SW` enable was not the cause. Exact transcript:
 `c31275546280b9df2dbf9b014d2e6411cfb708f87f1c803e10b11e2cdb95ec2f`).
 DebugUSB recovery restored a fresh, quiescent proxy.
 
-The no-new-address follow-up ran at m1n1 main `88ce1ee3`
+The no-new-address follow-up ran at m1n1 main `00760c79`
 (`v1.6.0-68-g88ce1ee3`), binary SHA-256
 `2997b07647007f99df6ad094a2da55d66a9f7accd6758bb134d3fa92b76d0c72`.
 It placed `dsb sy` and a read-only `L2C_ERR_STS` sample before the first and
@@ -155,7 +155,7 @@ writable, `iodev_console_write()` first flushes its retained 8 KiB console
 backlog. The identical post-allocation stream contributes another 9,274 bytes:
 the ring crosses its end during `[61] done`, then the asynchronous error is
 delivered 1,082 bytes later after `[70] done`. The zero-PCIe-write upper-guard
-control ran at main `a61fd099` (`v1.6.0-75-ga61fd099`), binary SHA-256
+control ran at main `eed11760` (`v1.6.0-75-ga61fd099`), binary SHA-256
 `1394c34504345fff1403340070029a5feedf744b032af02cd22c936026a7e61b`.
 It keeps the active 16 KiB ring one unused 16 KiB page below top-of-RAM and
 repeated the identical dry-run trace. All 77 entries and the completion marker
@@ -181,7 +181,7 @@ Exact transcripts and hashes are in
 `done/2026-07-14-t6040-pcie-guarded-clock-diagnostic.md`.
 
 The exact shared-PHY continuation ran at m1n1
-main `b5ced9ba` (`v1.6.0-81-gb5ced9ba`), binary SHA-256
+main `85b01036` (`v1.6.0-81-gb5ced9ba`), binary SHA-256
 `add3cef43947dab1605bd95ad602b6dcbf8e89de0a3f1b43f278005cd52dd9da`.
 It completed operations 1–114, including all five controller PHY tunables,
 reference-clock availability, both clock acknowledgements, reset release, and
@@ -193,7 +193,7 @@ followed. Linux did not hand off and no port or storage access ran. The
 Exact result and transcript:
 `done/2026-07-14-t6040-pcie-phy-diagnostic.md`.
 
-The reviewed read-only isolation then ran once at main `d1494f5a`, binary
+The reviewed read-only isolation then ran once at main `dc7124fb`, binary
 SHA-256
 `5616b05fdd21a35990102ce8b711920ec8c442f75c89ce6cfe27da2f24adef67`.
 Operations 1-114 again completed. The pre-read marker for the ADT-derived

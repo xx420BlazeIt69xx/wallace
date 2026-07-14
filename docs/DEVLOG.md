@@ -241,7 +241,7 @@ input 360, and telemetry's translated hwirq 360 are the same hardware number;
 the pre-registered interpretation matrix, and the new approval gate are in
 `done/2026-07-14-t6040-dockchannel-rxirq-txpoll.md` and `NEXT_STEPS.md`.
 
-ACK-order audit: safe m1n1 `a61fd099` never touches the UART IRQ mask/flag
+ACK-order audit: safe m1n1 `eed11760` never touches the UART IRQ mask/flag
 block, so it cannot leave BIT(3) set before handoff. The older working
 DockChannel/HID driver uses RX BIT(1), W1C-acks and masks the child before its
 thread reads and consumes the packet, then re-arms RX. The current mailbox
@@ -433,7 +433,7 @@ clkgen, the late gate, PHY, ports, Linux, or storage. Recovery restored a fresh
 quiescent proxy. Transcript:
 `logs/t6040-console-20260714-pcie-staged-gate.log`, SHA-256
 `c31275546280b9df2dbf9b014d2e6411cfb708f87f1c803e10b11e2cdb95ec2f`.
-The next live diagnostic ran at m1n1 main `88ce1ee3`, binary SHA-256
+The next live diagnostic ran at m1n1 main `00760c79`, binary SHA-256
 `2997b07647007f99df6ad094a2da55d66a9f7accd6758bb134d3fa92b76d0c72`.
 It added `dsb sy` and read-only L2C status sampling around the same 105-operation
 set. AXI `[70]` again printed `done`, proving that its barrier completed and the
@@ -451,7 +451,7 @@ the new trace crosses the 16 KiB ring during `[61] done`; the asynchronous SErro
 arrives 1,082 output bytes later. Recovery restored a quiescent proxy. Exact
 transcript: `logs/t6040-console-20260714-pcie-trace-dry-run.log`, SHA-256
 `52431e2a9a7d87642fde917419f3e8e666672434953cad23466c13b61968742d`.
-The upper-guard control ran at main `a61fd099`, binary SHA-256
+The upper-guard control ran at main `eed11760`, binary SHA-256
 `1394c34504345fff1403340070029a5feedf744b032af02cd22c936026a7e61b`.
 It left an unused 16 KiB page above the active log ring and retained the same
 zero-PCIe-write trace. All 77 entries and its completion marker printed, then
@@ -481,7 +481,7 @@ transcript: `logs/t6040-console-20260714-pcie-guarded-clock.log`, SHA-256
 `done/2026-07-14-t6040-pcie-guarded-clock-diagnostic.md`.
 
 The shared-PHY-only image ran once with approval. Main code
-`b5ced9ba` (`v1.6.0-81-gb5ced9ba`), binary SHA-256
+`85b01036` (`v1.6.0-81-gb5ced9ba`), binary SHA-256
 `add3cef43947dab1605bd95ad602b6dcbf8e89de0a3f1b43f278005cd52dd9da`,
 was bounded to 351 writes and five existing polls, with a return before ports.
 Operations 1–114 completed, including reference clock, CLK0/CLK1 acknowledgements,
@@ -495,7 +495,7 @@ The sanctioned DebugUSB reboot restored a quiescent proxy. Transcript SHA-256
 Exact addresses, phases, and result:
 `done/2026-07-14-t6040-pcie-phy-diagnostic.md`.
 
-The operation-115 read/write discriminator then ran once at main `d1494f5a`,
+The operation-115 read/write discriminator then ran once at main `dc7124fb`,
 binary SHA-256
 `5616b05fdd21a35990102ce8b711920ec8c442f75c89ce6cfe27da2f24adef67`.
 Its first 114 operations were identical to the proven prefix. The final line
@@ -515,7 +515,7 @@ Full details are in `done/2026-07-14-t6040-wireless-pcie-map.md`.
 ### m1n1 fork synced with AsahiLinux upstream (2026-07-14)
 
 `~/Code/m1n1` main merged `origin/main` (which had merged AsahiLinux main on
-GitHub) → merge commit `2df4f278`, pushed to the fork. Eight upstream commits
+GitHub) → merge commit `16b1f61f`, pushed to the fork. Eight upstream commits
 came in; none overlap the local T6040 work (no local commit touches `src/hv.c`
 or `proxyclient/m1n1/hv/`):
 
@@ -532,11 +532,11 @@ or `proxyclient/m1n1/hv/`):
 
 `make -j8` verified on the M1 host post-merge (all four artifacts). **The
 merged main is NOT rig-tested** — hash-pinned experiment images (e.g. ticket
-002's `d1494f5a` bin `5616b05f`) predate the merge; treat `2df4f278` builds as
+002's `dc7124fb` bin `5616b05f`) predate the merge; treat `16b1f61f` builds as
 a new image lineage for pinning purposes. The `t6040-bringup` branch
 (`m1n1-clean` worktree) was rebased the same day onto `upstream/main`
 `fd20d7f7` (the upstream content inside merged main): 22/22 commits clean,
-range-diff content-identical, new tip `0b2e7252`, build verified. The series
+range-diff content-identical, new tip `f0738eee`, build verified. The series
 drift audit + shaping remains ticket 046.
 
 Follow-up (same day): reviewed chadmed/m1n1 `dcp/14.8.3` (remote `chadmed`
@@ -551,6 +551,22 @@ this raw-boot machine (False, confirmed live), so the WFE park stays
 required here; the ticket-019 drafts should cite both commits. chadmed's DCP
 commits are 14.x-era firmware ABI infra (V14_7 ABI, FW 14.8.3, trace_dcp) —
 watch pointer recorded on ticket 022.
+
+**Identity rewrite (2026-07-14, force-pushed).** All CJ-authored commits on
+the fork were rewritten with git-filter-repo: four author spellings collapsed
+to `CJ Damsleth <kim@damsleth.no>`, `Co-Authored-By: Claude` trailers
+stripped, `Signed-off-by` added. Trees are byte-identical and AsahiLinux
+upstream hashes are untouched, but every local commit was rehashed. Living
+docs and open tickets now use the new hashes; `done/` write-ups and closed
+tickets keep the hashes that actually ran (artifact SHA-256s are the real
+provenance there). Map for the pinned ones (old → new):
+`d1494f5a → dc7124fb` (op-115 read), `a61fd099 → eed11760` (safe
+zero-PCIe-write control), `88ce1ee3 → 00760c79` (barrier diagnostic),
+`b5ced9ba → 85b01036` (gated shared-PHY stage), `2df4f278 → 16b1f61f`
+(upstream merge), `0b2e7252 → f0738eee` (t6040-bringup tip). Full map:
+`~/Code/m1n1/.git/filter-repo/commit-map`; pre-rewrite refs kept locally as
+`backup/main-pre-identity` and `backup/t6040-bringup-pre-identity`. Other
+agents with m1n1 clones must `git fetch && git reset --hard origin/main`.
 
 ### Watchdog (2026-07-11)
 Linux `apple_wdt` takes over m1n1's WD1; BusyBox pings `/dev/watchdog0` every

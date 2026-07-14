@@ -56,8 +56,8 @@ fixed, dapf gate + watchdog arm added for M4.
 dockchannel-uart per-instance IRQ masks + poll-mode patch to the
 dockchannel-branch authors (do not characterize IRQ 360 as dead yet); curated
 code-only branch `t6040-bringup` tracks main's src/ (main merged AsahiLinux
-upstream 2026-07-14 at `2df4f278`; curated branch rebased onto it the same
-day, tip `0b2e7252`; series audit/shaping is ticket 046).
+upstream 2026-07-14 at `16b1f61f`; curated branch rebased onto it the same
+day, tip `f0738eee`; series audit/shaping is ticket 046).
 
 One structural constraint colors everything below: **M4 = raw boot only** (SPTM
 owns the mach-o path). Apple-private sysregs are locked. Linux itself doesn't
@@ -248,7 +248,7 @@ keyboard/trackpad, battery status. Daily-drivable without GPU/WiFi (USB ethernet
   `t6040-j614s-dcuart-pcie` DT; see
   `done/2026-07-14-t6040-wireless-pcie-map.md`.
 - **Shared-PHY boundary:** the approved continuation after the successful
-  Apple-ordered 105-operation prefix ran at main `b5ced9ba`, binary
+  Apple-ordered 105-operation prefix ran at main `85b01036`, binary
   SHA-256
   `add3cef43947dab1605bd95ad602b6dcbf8e89de0a3f1b43f278005cd52dd9da`,
   used the PCIe-free base DT and returned before ports. Operations 1–114

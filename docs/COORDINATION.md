@@ -71,7 +71,7 @@ To actually drive the rig, hold the lease and export your name so the guard
 sees it:
 
 ```sh
-scripts/rig-lease.sh acquire claude "pcie op-115 isolation" b5ced9ba
+scripts/rig-lease.sh acquire claude "pcie op-115 isolation" 85b01036
 RIG_AGENT=claude bash scripts/t6040-debugusb-console.sh reboot
 RIG_AGENT=claude bash scripts/t6040-boot-dcuart.sh
 # ... run the approved experiment, record the result (commit + done/ write-up) ...
