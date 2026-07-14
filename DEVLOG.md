@@ -199,17 +199,21 @@ variant. The ADT declares AIC IRQ 360 for the DockChannel-UART AP FIFO. The
 2026-07-12 scan found no matching HW_STATE bit across all 4096 AIC inputs, but
 that result is now **provisional**: it enabled the UART block with MTP's RX
 BIT(3). New evidence says MTP and UART differ—MTP RX is BIT(3), UART RX is
-BIT(1)—and BIT(3) can become sticky-active on UART. The observed stock-driver
-"banner then silence" therefore follows from a wrong per-instance IRQ mask,
-not yet from a proven dead hardware route. The working fallback remains
+BIT(1)—and BIT(3) can become sticky-active on UART. A bounded 2026-07-14 run
+with UART TX/RX BIT(2)/BIT(1) still produced the BusyBox banner but accepted
+neither of two host commands. Therefore the wrong per-instance mask was real
+but was not the only cause of "banner then silence." The run could not retrieve
+`/proc/interrupts`, so it did not determine whether AIC input 360 fired. The
+working fallback remains
 `apple,poll-mode` (5 ms delayed work; TX-done on FIFO drain, RX via RX_COUNT).
 `patches/t6040-dockchannel-poll.patch` now accepts explicit per-instance masks;
-a separate BIT(1), IRQ-360 retest is gated in
+a full record of the one-run BIT(1), IRQ-360 retest is in
 `done/2026-07-14-t6040-dockchannel-irq-retest.md`.
 
-Do not publish the old result as a hardware erratum unless the BIT(1) retest is
-also negative. If it is negative, the remaining routing questions are whether
-the line is fused off on the chopped die, routed to AOP, or KIS-agent-only.
+Do not publish the old result as a hardware erratum yet. The next diagnostic
+must self-report the AIC and driver-handler counts over TX, without depending
+on the broken RX path. Remaining routing questions include whether the line is
+fused off on the chopped die, routed to AOP, or KIS-agent-only.
 
 MMIO caution: the dockchannel-uart block maps ONLY +0xc000 (irq, 24 B) and
 +0x28000..+0x38004 (config/data). Reading other offsets (e.g. +0x20000) raises

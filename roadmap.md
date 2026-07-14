@@ -22,7 +22,8 @@ framebuffer (simpledrm+fbcon) is the early console.
 
 **Fully remote dev loop (2026-07-12).** Two-way m1n1 proxy AND a two-way Linux
 shell (`/dev/ttydc0`, poll-mode dockchannel driver; the earlier dead-AIC-line
-finding used the wrong RX bit and is awaiting a BIT(1) retest) over a single
+finding used the wrong RX bit; a corrected BIT(1) IRQ-mode run still had no RX
+and needs a TX-only counter diagnostic) over a single
 DebugUSB/KIS cable in the DFU port, plus
 remote reboot via `macvdmtool`: reboot → chainload → boot → interactive shell
 with zero physical access. SBU analog serial was proven a dead end on ACE3.
@@ -51,8 +52,9 @@ fixed, dapf gate + watchdog arm added for M4.
 | SMP/cpufreq/MCC groundwork; PCIe host+wireless DT and drivers build | cpufreq throttles, gated PCIe link-up test, wireless firmware, USB3/TB PHY tunables |
 
 **Upstreaming pending**: SMP/broken_wfi/MPIDR + cpufreq drafts (in `done/`);
-dockchannel-uart dead-IRQ finding + poll-mode patch to the dockchannel-branch
-authors; curated code-only branch `t6040-bringup` tracks main's src/.
+dockchannel-uart per-instance IRQ masks + poll-mode patch to the
+dockchannel-branch authors (do not characterize IRQ 360 as dead yet); curated
+code-only branch `t6040-bringup` tracks main's src/.
 
 One structural constraint colors everything below: **M4 = raw boot only** (SPTM
 owns the mach-o path). Apple-private sysregs are locked. Linux itself doesn't

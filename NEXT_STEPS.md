@@ -7,23 +7,22 @@ cable; reboot via `macvdmtool`. No screen-reading or physical access needed.
 Operational details, recipes, and history: `DEVLOG.md`. Long-term: `roadmap.md`.
 Read the DebugUSB link rules in DEVLOG before touching the rig.
 
-## 0. Re-test DockChannel-UART IRQ 360 with RX BIT(1)
+## 0. Attribute DockChannel-UART RX BIT(1) without relying on RX
 
-The old "dead IRQ across all 4096 AIC inputs" result is provisional. That scan
-enabled the UART FIFO using MTP's RX BIT(3); new evidence says UART RX is BIT(1)
-and that BIT(3) becomes sticky-active on this instance. The working 5 ms poll
-mode remains the default and must not be removed yet.
+The storm-bounded UART TX/RX BIT(2)/BIT(1) diagnostic ran once on 2026-07-14.
+Linux reached BusyBox and TX worked, but neither an LF-terminated nor a
+CR-terminated host command was echoed or answered. The image was not retried;
+DebugUSB recovery restored a fresh proxy. Full hashes and result:
+`done/2026-07-14-t6040-dockchannel-irq-retest.md`.
 
-A separate, storm-bounded IRQ diagnostic is built but not approved or run:
-Image SHA-256
-`de09f5a17229e97d7cb291fe1471e63d2925ef3e8057d5019e4d380c5509cdf6`,
-DTB SHA-256
-`676be63aa9b7f059fbef0bfb79a93bb5b49d554a42b3e7cd2b9ee9844fa906ab`.
-It uses the previously proven zero-PCIe-write m1n1 binary `a61fd099`, UART
-TX/RX masks `0x4/0x2`, MTP masks `0x4/0x8`, and disables IRQ 360 after 4,096
-handled entries to bound a storm. Exact writes, artifacts, test, and approval
-gate: `done/2026-07-14-t6040-dockchannel-irq-retest.md`. Do not publish the old
-negative scan as a hardware erratum before this retest.
+This does not rehabilitate the old "dead IRQ across all 4096 AIC inputs"
+claim: that scan still enabled the FIFO with MTP's wrong RX BIT(3), while the
+corrected run could not use RX to retrieve `/proc/interrupts`. Prepare a
+TX-only, self-reporting diagnostic that emits the IRQ-360 and driver-handler
+counts before and after a bounded host-byte injection. Keep the 4,096-entry
+storm guard and the standard 5 ms poll-mode DT. Any revised live image needs a
+new exact review and approval. Do not publish the old scan as a hardware
+erratum yet.
 
 ## 0.1 Extend the proven T6040 PCIe path through PHY setup
 

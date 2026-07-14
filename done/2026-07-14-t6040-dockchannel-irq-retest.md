@@ -1,10 +1,12 @@
 # T6040 DockChannel-UART RX BIT(1) IRQ retest
 
-Prepared 2026-07-14. **Not approved or run.** The 2026-07-12 all-AIC scan is
-not sufficient to call the UART interrupt dead: it enabled the FIFO using
-MTP's RX mask BIT(3). Current cross-machine evidence says the two instances
-differ—MTP RX is BIT(3), while DockChannel-UART RX is BIT(1)—and BIT(3) can
-become sticky-active on the UART instance.
+Prepared and run once on 2026-07-14 with explicit approval for UART TX BIT(2)
+and RX BIT(1). The corrected mask did not restore host-to-target input: Linux
+reached BusyBox and TX remained healthy, but neither of two short host commands
+was echoed or answered. The 2026-07-12 all-AIC scan is still not sufficient to
+call the UART interrupt dead because it enabled the FIFO using MTP's RX BIT(3).
+The corrected run could not read `/proc/interrupts`, so it also does not show
+whether AIC input 360 fired.
 
 ## Exact build
 
@@ -75,10 +77,38 @@ confirm:
 If the TTY stays silent or the guard trips, stop and recover; do not retry the
 same image. This test does not access NVMe or any storage namespace.
 
-## Approval gate
+## Live result
 
-The test changes a live FIFO IRQ mask from the previously tested wrong `0x8`
-to the evidence-backed `0x2`, and may subsequently use `0x6` while TX is active.
-It therefore requires fresh explicit approval for one run of the exact hashes
-above. The property names are local bring-up names pending coordination; do not
-present them as an agreed upstream binding.
+The maintainer approved one boot of the exact hashes above with UART TX
+BIT(2) and RX BIT(1). The image booted normally and printed the BusyBox banner,
+which proves the UART TX path remained functional with its BIT(2) mask. The
+host then sent exactly two commands, first terminated by LF and then by CR:
+
+```text
+echo RX_BIT1_ONE
+echo RX_BIT1_TWO
+```
+
+Neither command was echoed or answered, and the target transcript remained
+exactly 2,232 bytes. Following the pre-agreed stop rule, the image was not
+retried. A sanctioned DebugUSB reboot restored a fresh, quiescent m1n1 proxy.
+Linux never accessed NVMe or another storage namespace.
+
+Transcript:
+`logs/t6040-console-20260714-dockchannel-irq-bit1.log`, SHA-256
+`698d3e51df4009ab3d254c7588ed3e70e309fb8003f8e6c937ef793b7890fe7c`.
+
+This is a negative result for interactive RX with the corrected FIFO enable,
+not yet a negative result for AIC input 360. Because RX was the path needed to
+request `/proc/interrupts` and dmesg, the run captured neither the IRQ count nor
+the diagnostic driver's internal count. The next useful test must report those
+counts autonomously over the proven TX path before and after a bounded host-byte
+injection. Keep poll mode as the standard configuration and do not publish the
+old scan as a hardware erratum.
+
+## Approval record
+
+The maintainer approved one boot with TX BIT(2) and RX BIT(1); that single run
+is complete. Any revised diagnostic or second boot requires a new exact review
+and approval. The property names are local bring-up names pending coordination;
+do not present them as an agreed upstream binding.

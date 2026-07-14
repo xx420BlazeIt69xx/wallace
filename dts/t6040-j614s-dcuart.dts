@@ -13,9 +13,10 @@
  *
  * The 2026-07-12 no-IRQ result used the MTP RX mask BIT(3). New evidence shows
  * the UART instance uses RX BIT(1), while MTP uses BIT(3), so that conclusion
- * is provisional. Keep the proven poll fallback in this base DT until the
- * separate BIT(1) IRQ diagnostic is reviewed; the instance-specific masks are
- * explicit here so both modes use the correct hardware description.
+ * is provisional. A bounded BIT(1) IRQ-mode run still produced TX-only output
+ * but could not retrieve the IRQ count. Keep the proven poll fallback in this
+ * base DT until a TX-only diagnostic attributes the interrupt; the
+ * instance-specific masks remain explicit in both modes.
  */
 /dts-v1/;
 

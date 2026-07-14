@@ -14,8 +14,10 @@ The console deserves a sentence. M4 raw-boot has no serial port, no hypervisor t
 
 Linux currently polls the DebugUSB DockChannel FIFO every 5 ms. The earlier
 "dead interrupt" conclusion is provisional: its 4096-input AIC scan used MTP's
-RX BIT(3), while new evidence identifies UART RX as BIT(1). A separately gated
-BIT(1) retest is prepared; polling remains the proven fallback meanwhile.
+RX BIT(3), while new evidence identifies UART RX as BIT(1). One bounded BIT(1)
+run still produced TX-only output, but could not report whether IRQ 360 fired.
+Polling remains the proven fallback while a TX-only counter diagnostic is
+prepared.
 
 ## The repos
 
