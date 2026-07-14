@@ -276,11 +276,16 @@ fresh quiescent proxy. Transcript:
 (407 lines, 25,940 bytes).
 
 The narrowest next diagnostic adds no MMIO addresses or values: issue a
-full-system barrier and sample the read-only `L2C_ERR_STS` system register after
-each existing traced RMW. That can reveal whether an error is already pending
-before its asynchronous exception is delivered. Because it changes target
-timing, its exact build still requires new explicit approval before one live
-run. The PCIe-free base DT remains mandatory; storage stays out of scope.
+full-system barrier and sample the read-only `L2C_ERR_STS` system register
+before the first and after each existing traced RMW. Main `88ce1ee3`, binary
+SHA-256
+`2997b07647007f99df6ad094a2da55d66a9f7accd6758bb134d3fa92b76d0c72`,
+implements that check and aborts without clearing a nonzero status. It can
+reveal whether an error is already pending before its asynchronous exception
+is delivered. Because it changes target timing, the exact build requires new
+explicit approval before one live run. The PCIe-free base DT remains mandatory;
+storage stays out of scope. Full gate:
+`2026-07-14-t6040-pcie-barrier-diagnostic.md`.
 
 ## Full-path gate
 

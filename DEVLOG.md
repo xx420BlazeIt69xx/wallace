@@ -392,8 +392,11 @@ clkgen, the late gate, PHY, ports, Linux, or storage. Recovery restored a fresh
 quiescent proxy. Transcript:
 `logs/t6040-console-20260714-pcie-staged-gate.log`, SHA-256
 `c31275546280b9df2dbf9b014d2e6411cfb708f87f1c803e10b11e2cdb95ec2f`.
-The next live diagnostic must be newly approved; prepare barriers and read-only
-L2C status sampling after the existing writes to localize the pending error.
+The next live diagnostic is prepared at m1n1 main `88ce1ee3`, binary SHA-256
+`2997b07647007f99df6ad094a2da55d66a9f7accd6758bb134d3fa92b76d0c72`.
+It adds `dsb sy` and read-only L2C status sampling around the same 105-operation
+set and aborts without clearing status on any nonzero sample. It requires new
+explicit approval; see `done/2026-07-14-t6040-pcie-barrier-diagnostic.md`.
 Full details are in `done/2026-07-14-t6040-wireless-pcie-map.md`.
 
 ### Watchdog (2026-07-11)
