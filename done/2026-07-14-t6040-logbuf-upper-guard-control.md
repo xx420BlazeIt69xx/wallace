@@ -1,8 +1,8 @@
 # T6040 stage-2 log-buffer upper-guard control
 
-Prepared 2026-07-14. **Not approved or run.** This control tests the now-bounded
-cause of the zero-PCIe-write trace SError: wrapping m1n1's stage-2 log ring when
-it occupies the final physical page of normal RAM.
+Prepared and run once with explicit approval on 2026-07-14. This control tested
+the bounded cause of the zero-PCIe-write trace SError: wrapping m1n1's stage-2
+log ring when it occupied the final physical page of normal RAM.
 
 ## Exact build
 
@@ -47,13 +47,40 @@ reads the in-memory ADT and prints all 77 AXI pre/`done` pairs, but returns befo
 PCIe PMGR, AXI, RC, CIO3, clkgen, PHY, port, PERST#, RID2SID, or MSIMAP access.
 The base DT has no Linux PCIe host node.
 
-## Interpretation and approval gate
+## Live result
 
-- If all 77 pairs and the dry-run completion marker print, followed by the
-  boot-proven base Linux handoff, the top-boundary log-ring fault is fixed.
-- If an SError remains, preserve the exact address and output boundary and
-  continue investigating the generic console ring without PCIe MMIO.
+The exact main binary was approved for one run. The observed layout matched the
+prediction:
 
-This exact main binary requires explicit approval for one live run. Stop after
-the result and recover through the sanctioned DebugUSB helper if necessary.
-NVMe and all namespace/mount/repair/format operations remain out of scope.
+```text
+FDT: Usable memory is ...0x105ce79c000
+FDT: Adding reserved-memory node flash@105ce7a0000
+     (105ce7a0000..105ce7a4000) to RAM map
+```
+
+Every dry-run AXI entry `[0]` through `[76]` printed `done`, followed by:
+
+```text
+pcie: T6040 AXI trace dry run complete; no PCIe MMIO
+Preparing to boot kernel ...
+*** t6040 Linux DockChannel UART console alive ***
+BusyBox ... built-in shell (ash)
+/ #
+```
+
+No SError occurred. The result proves the top-boundary log-ring attribution and
+the 16 KiB upper guard. It also proves that none of the previous `[70]` failures
+can implicate a PCIe RMW. No PCIe PMGR/controller/PHY/port access, Linux PCIe,
+NVMe, or storage operation ran.
+
+- m1n1 transcript: `logs/t6040-console-20260714-logbuf-upper-guard.log`,
+  SHA-256
+  `2e8624d795bc6bddab24b932a530bf7f992f35732402ed041bfc308857260d63`
+  (383 lines, 24,915 bytes);
+- Linux transcript: `logs/t6040-linux-20260714-logbuf-upper-guard.log`, SHA-256
+  `6c6c0073bacbec235a9e54c6535a646f34ad372792c02ee30a5cb1fc5983d8e9`
+  (36 lines, 2,255 bytes).
+
+The next binary may restore the existing Apple-ordered 105-operation PCIe path,
+retain this guard and the stop-before-PHY boundary, and receive separate
+explicit approval.

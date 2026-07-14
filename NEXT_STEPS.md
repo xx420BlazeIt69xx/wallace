@@ -16,7 +16,7 @@ kernelcache proves the two new T6040 groups target ADT reg[5] (CIO3 PLL at
 sequence. The separate `t6040-j614s-dcuart-pcie` kernel DT builds cleanly and
 describes BCM4388 WiFi/BT on port 0 plus the GL9755 SD reader on port 1.
 
-Five approved m1n1-only attempts ran on 2026-07-14. The first completed all 77
+Six approved diagnostics ran on 2026-07-14. The first completed all 77
 AXI tunables and stopped after `pcie: No common tunables`. The traced retry on
 main `81da3522` delivered the real failure earlier: AXI tunable `[70]`, manifest
 operation 90 in that build, printed `done`; before `[71]` was announced, m1n1
@@ -72,19 +72,29 @@ that the traced SError is entirely a console/log artifact, not a PCIe access.
 Transcript: `logs/t6040-console-20260714-pcie-trace-dry-run.log`, SHA-256
 `52431e2a9a7d87642fde917419f3e8e666672434953cad23466c13b61968742d`.
 
-The exact mechanism is now bounded offline. The 16 KiB m1n1 log buffer is
+The exact mechanism was bounded offline. The 16 KiB m1n1 log buffer was
 `0x105ce7a4000..0x105ce7a8000`, ending exactly at the top of normal RAM; every
 SError reports that exclusive end in `L2C_ERR_ADR`. When the log device becomes
 writable, `iodev_console_write()` first flushes its retained 8 KiB console
 backlog. The identical post-allocation stream contributes another 9,274 bytes:
 the ring crosses its end during `[61] done`, then the asynchronous error is
 delivered 1,082 bytes later after `[70] done`. The zero-PCIe-write upper-guard
-control is prepared at main `a61fd099` (`v1.6.0-75-ga61fd099`), binary SHA-256
+control ran at main `a61fd099` (`v1.6.0-75-ga61fd099`), binary SHA-256
 `1394c34504345fff1403340070029a5feedf744b032af02cd22c936026a7e61b`.
 It keeps the active 16 KiB ring one unused 16 KiB page below top-of-RAM and
-repeats the identical dry-run trace. It requires explicit approval for one run;
-see `done/2026-07-14-t6040-logbuf-upper-guard-control.md`. Continue using the
-PCIe-free base DT; do not access NVMe or mount/repair/format storage.
+repeated the identical dry-run trace. All 77 entries and the completion marker
+printed without SError, and the base kernel reached its BusyBox shell. This
+live-proves the upper guard and fully exonerates the PCIe sequence from the
+traced `[70]` failure. Exact m1n1 transcript:
+`logs/t6040-console-20260714-logbuf-upper-guard.log` (SHA-256
+`2e8624d795bc6bddab24b932a530bf7f992f35732402ed041bfc308857260d63`).
+Full result: `done/2026-07-14-t6040-logbuf-upper-guard-control.md`.
+
+Next, restore the Apple-ordered 105-operation write path while retaining the
+proven upper guard, per-RMW barriers/status samples, and stop-before-PHY return.
+Prepare and hash that binary; its live run requires fresh explicit approval.
+Continue using the PCIe-free base DT; do not access NVMe or
+mount/repair/format storage.
 
 ## 1. Provision and test the J614s trackpad firmware
 `event0` is Apple DockChannel Multi-touch and `event1` is the keyboard. The

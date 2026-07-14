@@ -410,11 +410,16 @@ the new trace crosses the 16 KiB ring during `[61] done`; the asynchronous SErro
 arrives 1,082 output bytes later. Recovery restored a quiescent proxy. Exact
 transcript: `logs/t6040-console-20260714-pcie-trace-dry-run.log`, SHA-256
 `52431e2a9a7d87642fde917419f3e8e666672434953cad23466c13b61968742d`.
-The upper-guard control is prepared at main `a61fd099`, binary SHA-256
+The upper-guard control ran at main `a61fd099`, binary SHA-256
 `1394c34504345fff1403340070029a5feedf744b032af02cd22c936026a7e61b`.
-It leaves an unused 16 KiB page above the active log ring and retains the same
-zero-PCIe-write trace. It requires explicit approval; see
-`done/2026-07-14-t6040-logbuf-upper-guard-control.md`.
+It left an unused 16 KiB page above the active log ring and retained the same
+zero-PCIe-write trace. All 77 entries and its completion marker printed, then
+the base Linux kernel reached BusyBox. This proves the guard fixes the trace
+SError. m1n1 transcript SHA-256
+`2e8624d795bc6bddab24b932a530bf7f992f35732402ed041bfc308857260d63`;
+Linux transcript SHA-256
+`6c6c0073bacbec235a9e54c6535a646f34ad372792c02ee30a5cb1fc5983d8e9`.
+See `done/2026-07-14-t6040-logbuf-upper-guard-control.md`.
 Full details are in `done/2026-07-14-t6040-wireless-pcie-map.md`.
 
 ### Watchdog (2026-07-11)

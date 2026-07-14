@@ -83,7 +83,7 @@ m1n1 stage-2 log ring:
 
 Main `a61fd099`, binary SHA-256
 `1394c34504345fff1403340070029a5feedf744b032af02cd22c936026a7e61b`,
-reserves an additional unused 16 KiB above the log ring, keeping its active page
-away from the physical top-of-RAM boundary, and repeats this same zero-PCIe-write
-trace. It needs separate explicit approval; exact gate:
-`2026-07-14-t6040-logbuf-upper-guard-control.md`.
+reserved an additional unused 16 KiB above the log ring, kept its active page
+away from the physical top-of-RAM boundary, and repeated this same zero-PCIe-
+write trace. All 77 entries completed and base Linux reached BusyBox, proving
+the fix. Full result: `2026-07-14-t6040-logbuf-upper-guard-control.md`.
