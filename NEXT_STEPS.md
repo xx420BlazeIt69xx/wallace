@@ -354,14 +354,6 @@ parent-gating hypothesis. Never mount, repair, format, flush, or write the
 namespace. Prior exact output:
 `logs/t6040-console-20260713-nvme-pmgr-force-active.log`.
 
-## 4. Upstream / share
-- Post the drafted writeups: `done/2026-07-10-t6040-smp-writeup.md`,
-  `done/2026-07-10-t6040-cpufreq-writeup.md` (#asahi-dev).
-- Keep the curated code-only branch `t6040-bringup` (worktree
-  `~/Code/m1n1-clean`) in sync with any new src/ changes on main.
-- Report the dockchannel-uart dead-IRQ finding + poll-mode patch to the
-  dockchannel-branch authors (yuka / Michael Reeves) — t8140 may differ.
-
 ## Parked (revisit after pmgr)
 - USB gadget console → gadget-Ethernet + SSH (EP0 dies post-enumeration;
   `done/2026-07-11-t6040-usb-gadget-plan.md`).
