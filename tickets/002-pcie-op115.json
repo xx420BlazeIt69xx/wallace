@@ -5,10 +5,14 @@
   "state": "approved",
   "track": "pcie",
   "priority": "P1",
-  "desc": "isolate op-115: read-only first PHY-IP PLL access at 0x417040090, ops 1-114 unchanged, return before write (NEXT_STEPS §0.1; done/2026-07-14-t6040-pcie-op115-static-analysis.md). m1n1 main d1494f5a bin 5616b05f. Cross-reviewed by fable 2026-07-14: PASS (done/2026-07-14-t6040-op115-read-cross-review.md); precondition: pinned PCIe-free base DTB e7691ee4 no longer on disk — rebuild+verify or re-pin before boot",
+  "desc": "isolate op-115: read-only first PHY-IP PLL access at 0x417040090, ops 1-114 unchanged, return before write (NEXT_STEPS §0.1; done/2026-07-14-t6040-pcie-op115-static-analysis.md). m1n1 main d1494f5a bin 5616b05f; base DTB e7691ee4 recovered+stashed as linux-build-out/t6040-j614s-dcuart-base-e7691ee4.dtb. Cross-reviewed by fable 2026-07-14: PASS (done/2026-07-14-t6040-op115-read-cross-review.md)",
   "author": "claude",
   "deps": [],
-  "hashes": null,
+  "hashes": {
+    "image": "14da8640398fc64b89d9241a75be0ffc8d4260b681068a3c27251cc79c3abaf4",
+    "dtb": "e7691ee49ed88114154061aeaf29309e3d817ae3ae89d7196bf7ef02a9b3dc9a",
+    "initramfs": "512c69da94884f3ea83f9a6a4ea0731dcad6b5aaa87eb875ca5a6d7b24c317ca"
+  },
   "created": 1784039023,
   "approved_by": "cj",
   "approved_at": 1784042799

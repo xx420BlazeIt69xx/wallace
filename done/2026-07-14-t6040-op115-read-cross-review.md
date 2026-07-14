@@ -1,4 +1,4 @@
-# Cross-review: ticket 002 op-115 read-only isolation (PASS, one precondition)
+# Cross-review: ticket 002 op-115 read-only isolation (PASS)
 
 Reviewer: `fable`, 2026-07-14. Author: `claude`
 (`done/2026-07-14-t6040-pcie-op115-static-analysis.md`). Reviewed against
@@ -35,23 +35,29 @@ All claims verified against the artifacts.
 - **Kernel artifacts**: `Image` `14da8640…3abaf4` ✓ and
   `initramfs-dcuart.cpio.gz` `512c69da…c317ca` ✓ still match their pins.
 
-## Finding: the pinned base DTB no longer exists on disk
+## Finding (resolved): the pinned base DTB had vanished from the host
 
 The packet (like the four prior PCIe diagnostics) pins the PCIe-free base DTB
-by hash `e7691ee4…3dc9a` only — no filename was ever recorded. A full search
-of `~/Code` and `/private/tmp` finds **no file with that hash**;
-`t6040-j614s-dcuart.dtb` in `~/Code/linux-build-out` now hashes
-`b3858f60…7814` (later rebuilds overwrote it). Before the live run, the runner
-must either rebuild a DTB that reproduces `e7691ee4…` exactly, or produce a
-fresh PCIe-free base DTB, decompile-verify it (no PCIe host node, NVMe/SART
-disabled), record its hash, and have it cross-reviewed. Going forward, base
-DTB pins should include the filename and a stashed copy, as was done for the
-m1n1 control binary.
+by hash `e7691ee4…3dc9a` only — no filename was ever recorded, and no host
+file still matched: `t6040-j614s-dcuart.dtb` in `~/Code/linux-build-out` now
+hashes `b3858f60…7814` because wallace commit `5a3f7c5` added the explicit
+per-instance IRQ mask properties to the base dcuart source, and newer build
+trees rebuilt from it.
+
+**Resolved:** the pre-`5a3f7c5` build product survived inside the kbuild
+container (`/build/linux-pcie`, `/build/linux-keyboard`,
+`/build/linux-nvme-protected` all agree). A copy is now stashed on the host as
+`~/Code/linux-build-out/t6040-j614s-dcuart-base-e7691ee4.dtb` and recomputes
+to exactly `e7691ee4…3dc9a`. Decompile-verified: no PCIe host node; the ANS
+mailbox, SART, and NVMe nodes are all `status = "disabled"`. This is the
+byte-exact DTB that live-proved operations 1–114. Lesson recorded: pin
+filename + stash a copy alongside every hash, as was done for the m1n1
+control binary.
 
 ## Verdict
 
-**PASS** on the m1n1 code, binary, and manifest — ready for CJ approval —
-with the single precondition that the exact base DTB be restored or re-pinned
-and reviewed before boot. One run only; interpret per the packet's
-pre-registered matrix; any write-side follow-up needs a new manifest, review,
-and approval.
+**PASS** on the m1n1 code, binary, manifest, and now the complete pinned boot
+set (m1n1 `5616b05f…`, Image `14da8640…`, base DTB `e7691ee4…` stashed,
+initramfs `512c69da…`) — ready for CJ approval. One run only; interpret per
+the packet's pre-registered matrix; any write-side follow-up needs a new
+manifest, review, and approval.
