@@ -134,7 +134,19 @@ def main() -> int:
             rmw("pmgr", f"clock-gate:{device_id}:{dev.name}", address, 4,
                 pmgr_mask, pmgr_active)
 
-    for encoded in node.clock_gates:
+    expected_clock_gates = (
+        "ANS", "APCIE_GP", "APCIE_SYS_GP", "APCIE_ST0",
+        "APCIE_SYS_ST0", "APCIE_ST1", "APCIE_SYS_ST1", "APCIE_PHY_SW",
+    )
+    actual_clock_gates = tuple(by_id[int(encoded) & 0xFFFF].name
+                               for encoded in node.clock_gates)
+    if actual_clock_gates != expected_clock_gates:
+        raise SystemExit(f"apcie0 clock-gates changed: {actual_clock_gates!r}")
+
+    # ApplePCIEBaseT8132::_enableRootComplex() stages the last gate: indices
+    # 0..6 precede controller tunables, while index 7 (APCIE_PHY_SW) follows
+    # the CIO3 PLL and PCIe clkgen programming.
+    for encoded in node.clock_gates[:-1]:
         enable_pmgr(int(encoded) & 0xFFFF, (int(encoded) >> 28) & 0xF)
 
     axi = regs[4][0]
@@ -154,6 +166,8 @@ def main() -> int:
                  getattr(node, attr_name("apcie-cio3pllcore-tunables")))
     local_parsed("controller", "apcie-pcieclkgen-tunables", regs[6][0],
                  getattr(node, attr_name("apcie-pcieclkgen-tunables")))
+    encoded = node.clock_gates[-1]
+    enable_pmgr(int(encoded) & 0xFFFF, (int(encoded) >> 28) & 0xF)
     local_parsed("controller", "apcie-phy-tunables", phy_reg,
                  getattr(node, attr_name("apcie-phy-tunables")))
 
@@ -253,7 +267,7 @@ def main() -> int:
 
     print(f"# source_sha256\t{hashlib.sha256(data).hexdigest()}")
     print("# scope\tm1n1 pcie_init_controller(APCIE, /arm-io/apcie0), "
-          "T6040 path at eb23c423")
+          "T6040 staged-clock path")
     print("# semantics\tWRITE replaces the full value; RMW is (old & ~mask) | value; "
           "SET is old | mask; CLEAR is old & ~mask")
     print("sequence\tphase\tsource\taddress\tsize\toperation\tmask\tvalue")

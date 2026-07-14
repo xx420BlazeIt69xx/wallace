@@ -368,13 +368,23 @@ before the next status. The uploader timed out; HPM DebugUSB warm-reboot restore
 `Running proxy`. No Linux handoff or storage access occurred. Transcript:
 `logs/t6040-console-20260714-pcie-stage1.log`.
 
-The follow-up m1n1 build logs each T6040 tunable immediately before and after
-the RMW and returns after manifest operation 105, before PHY/ports. Main
-`81da3522` binary hash
-`d6351b32e6e344e40c6dbecda7ad4e09bf57587bb02b5022cc9f27a494e951f3`;
-curated code commit `b95da002`. Its exact subset is
-`done/2026-07-14-t6040-pcie-clock-diagnostic.tsv`. This new live run is gated.
-Full details and hashes are in `done/2026-07-14-t6040-wireless-pcie-map.md`.
+The traced retry delivered an asynchronous SError after AXI tunable `[70]`
+printed `done` and before `[71]` was announced. It was delivered in the proxy
+`P_CALL` trampoline, so this is a timing boundary, not exact causal-write
+attribution. DebugUSB recovery again restored a healthy proxy; there was no
+Linux handoff, PHY/port write, or storage access. Transcript:
+`logs/t6040-console-20260714-pcie-axi-trace.log`.
+
+Paired-kernelcache disassembly found the sequencing delta: Apple enables PCIe
+clock gates 0–6 before AXI/CIO3/clkgen programming and gate 7
+(`APCIE_PHY_SW`) afterward; m1n1 had enabled all eight up front. Main
+`6efe2d45` / curated `954fd4cf` now reproduce Apple's order and still return
+before manifest operation 106, the first PHY register write. Main binary hash
+`c2a5b7e27bb8d56479f46d6b485a195d2eb1cd64a3b86fbe3c90db1f00424735`;
+the exact newly gated subset is
+`done/2026-07-14-t6040-pcie-clock-diagnostic.tsv`, hash
+`ce86e51aa3d278da1d9ef9eb35fca3208859f4993480de5b6af3268dc03ef4e6`.
+Full details are in `done/2026-07-14-t6040-wireless-pcie-map.md`.
 
 ### Watchdog (2026-07-11)
 Linux `apple_wdt` takes over m1n1's WD1; BusyBox pings `/dev/watchdog0` every

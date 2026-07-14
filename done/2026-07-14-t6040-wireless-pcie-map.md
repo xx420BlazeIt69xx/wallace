@@ -103,9 +103,9 @@ through the existing T6031/T8122 PHY and port sequence:
 - main: `eb23c423` (`pcie: initialize T6040 clock and PLL blocks`);
 - curated `t6040-bringup`: `da1791a0` (same code-only change).
 
-The current diagnostic heads temporarily trace each T6040 tunable and return
-after the clock groups: main `81da3522`, curated `b95da002`. They do not reach
-the PHY/port sequence.
+The current diagnostic heads temporarily trace each T6040 tunable, stage
+`APCIE_PHY_SW` after the clock groups, and then return: main `6efe2d45`, curated
+`954fd4cf`. They do not reach the PHY/port sequence.
 
 Both m1n1 trees build cleanly.  The Linux bring-up source is deliberately kept
 separate at `dts/t6040-j614s-dcuart-pcie.dts`; it includes GPIO/pinctrl, all four
@@ -137,13 +137,13 @@ Prepared Linux-enumeration artifacts:
 ## Complete write review
 
 `scripts/t6040-pcie-write-plan.py` consumes the committed raw J614s ADT without
-connecting to the target and expands the actual T6040 path at m1n1 `eb23c423`.
+connecting to the target and expands the staged T6040 path at m1n1 `6efe2d45`.
 The checked-in result is `2026-07-14-t6040-pcie-write-manifest.tsv`, SHA-256
-`a134c540784cca94a44e2392e0060de4249fec01d653af87c352bd0f82e6265e`.
+`6a91f39f8db215305de5e354446a44eab8d604852107f91abc7d4c3074065864`.
 It contains 1,571 ordered operations at 1,459 distinct addresses:
 
 - 19 recursive PMGR RMWs, including repeated parent visits exactly as m1n1
-  executes them;
+  executes them; the last seven are staged after clkgen;
 - 91 controller operations and 241 shared-PHY operations;
 - 610 operations for each populated port, including every RID2SID/MSIMAP loop
   element and both ports' ADT config/DBI tunables.
@@ -185,30 +185,69 @@ and no NVMe or user-storage access occurred. Transcript:
 `logs/t6040-console-20260714-pcie-stage1.log`, SHA-256
 `b850b08a6ce2b40a2067324dabacaa52102f6b4c07b1c7b045237f64fb2a5398`.
 
-## Bounded follow-up gate
+## Traced follow-up result
 
-The prepared diagnostic changes observation and bounds execution:
+The maintainer approved the bounded trace on main `81da3522`. It reached
+`Ready to boot`, entered `pcie_init()`, and printed `done` for AXI tunable
+`[70]` at `0x4160013fc`. Before the pre-write line for `[71]`, m1n1 reported:
 
-- m1n1 main `81da3522`; tracing code `47732d50`, stop-before-PHY code
-  `25dc42a2`;
-- curated equivalents `06b6a306` and `b95da002`;
-- main `m1n1.bin` SHA-256
-  `d6351b32e6e344e40c6dbecda7ad4e09bf57587bb02b5022cc9f27a494e951f3`;
-- every T6040 local tunable prints its address/size/mask/value before the RMW
-  and prints `done` only after the access returns;
-- after CIO3 entries 98–104 and clkgen entry 105, m1n1 returns before manifest
-  entry 106. No PHY, port, PERST#, RID2SID, MSIMAP, or Linux PCIe write can run.
+```text
++Exception: SError
++Exception taken from EL2h
++PC:       0x1000495f140 (rel: 0x2b140)
++ESR:      0xbe000000 (SError)
++L2C_ERR_STS: 0x82
++Unhandled exception, rebooting...
+```
 
-The exact next-attempt write set is
-`2026-07-14-t6040-pcie-clock-diagnostic.tsv`, SHA-256
-`85d3472fcf4ccb17379df1aaf46faa9b714cedece6fe65fd484e6dad4081fd93`.
-It is the first 105 operations of the full manifest: 19 PMGR RMWs, 77 proven
-AXI RMWs, one RC write, seven CIO3 RMWs, and one clkgen RMW.
+The relative PC symbolizes to `proxy_process()` at `src/proxy.c:50`, the
+`P_CALL` trampoline running kboot. It therefore does not identify a synchronous
+bad-address instruction. `[70]` is the asynchronous delivery boundary only;
+the causal access may be any earlier AXI operation. The slower per-entry UART
+trace explains why this run delivered the pending fault before the original
+untraced run's later `No common tunables` line.
 
-This diagnostic has **not** run and requires separate explicit approval. It
-must boot the PCIe-free base DT. If a tunable faults, its pre-write line is the
-last output; if all eight new entries return, m1n1 prints the diagnostic-stop
-message and the base Linux image may hand off normally.
+The uploader was terminated without a Linux handoff. HPM DebugUSB recovery
+restored a fresh, quiescent `Running proxy`. No CIO3, clkgen, PHY, port, PERST#,
+RID2SID, MSIMAP, Linux PCIe, or storage access occurred. Transcript:
+`logs/t6040-console-20260714-pcie-axi-trace.log`, SHA-256
+`41774ef8866e775de30ca2c98957d167085943163fe24d25c7aaca29eb177860`.
+
+## Corrected clock-gate ordering and next gate
+
+Offline disassembly of `ApplePCIEBaseT8132::_enableRootComplex()` resolved the
+remaining sequencing difference. `AppleT6040PCIe::start()` supplies a count of
+eight clock gates. The base driver enables indices 0–6, applies AXI tunables,
+then CIO3 PLL tunables, then PCIe clkgen tunables, and only afterward enables
+index 7. The committed J614s ADT proves index 7 is `APCIE_PHY_SW`. m1n1's generic
+`pmgr_adt_power_enable()` instead enabled all eight before AXI, switching on the
+PHY against a partially configured controller.
+
+m1n1 main `6efe2d45` and curated `954fd4cf` reproduce Apple's staging. The two
+`src/pcie.c` files are byte-identical and both builds complete cleanly. Main
+`m1n1.bin` SHA-256:
+`c2a5b7e27bb8d56479f46d6b485a195d2eb1cd64a3b86fbe3c90db1f00424735`;
+curated binary SHA-256:
+`cb08ad798a263293c3adf5bcd96f7cb142ca14c5f72cc8b2e5028f034746e73f`
+(the build tags differ).
+
+The regenerated full 1,571-operation manifest has SHA-256
+`6a91f39f8db215305de5e354446a44eab8d604852107f91abc7d4c3074065864`.
+The next-attempt subset is still exactly operations 1–105, but now ordered as:
+
+- 12 recursive PMGR RMWs for clock gates 0–6;
+- 77 AXI RMWs, one RC write, seven CIO3 RMWs, and one clkgen RMW;
+- seven recursive PMGR RMWs ending in `APCIE_PHY_SW` at operation 105.
+
+`2026-07-14-t6040-pcie-clock-diagnostic.tsv` has SHA-256
+`ce86e51aa3d278da1d9ef9eb35fca3208859f4993480de5b6af3268dc03ef4e6`.
+The build logs every T6040 tunable before and after its RMW, logs the late PHY
+gate before and after, then returns before operation 106, the first PHY register
+write. It cannot reach ports, PERST#, RID2SID/MSIMAP, or Linux PCIe.
+
+This corrected diagnostic has **not** run and requires separate explicit
+approval for the exact main binary and manifest hashes above. It must boot the
+PCIe-free base DT; NVMe and all storage operations remain out of scope.
 
 ## Full-path gate
 
