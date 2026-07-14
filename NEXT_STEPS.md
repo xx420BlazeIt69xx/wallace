@@ -63,14 +63,17 @@ Recovery restored a fresh quiescent proxy. Full result:
 `done/2026-07-14-t6040-pcie-barrier-diagnostic.md`.
 
 All three traced logs are exactly 407 lines and 25,940 bytes and stop after the
-same output line despite code, gate ordering, and barriers changing. Before
-another MMIO attempt, prepare a zero-PCIe-write trace-volume control: enumerate
-the same ADT AXI entries and print the same pre/`done` lines without enabling
-PCIe clocks or touching controller registers. If it faults at the same output
-boundary, the trace/log path is the artifact; if it completes, use an AXI
-prefix-and-hold bisection. Either live control needs fresh explicit approval.
-Continue using the PCIe-free base DT; do not access NVMe or
-mount/repair/format storage.
+same output line despite code, gate ordering, and barriers changing. The
+zero-PCIe-write trace-volume control is prepared at main `3e772779`
+(`v1.6.0-72-g3e772779`), binary SHA-256
+`c9296b8d1ca146a32c7a1ba1bf17b7091281588ab90d16a69f0718c5a8fa04ea`.
+It enumerates the same ADT AXI entries and prints the identical 77 pre/`done`
+pairs, but returns before enabling any PCIe clock or reading/writing controller
+MMIO. If it faults at the same output boundary, the trace/log path is the
+artifact; if it completes, use an AXI prefix-and-hold bisection. The exact
+control needs fresh explicit approval for one run; see
+`done/2026-07-14-t6040-pcie-trace-dry-run.md`. Continue using the PCIe-free base
+DT; do not access NVMe or mount/repair/format storage.
 
 ## 1. Provision and test the J614s trackpad firmware
 `event0` is Apple DockChannel Multi-touch and `event1` is the keyboard. The

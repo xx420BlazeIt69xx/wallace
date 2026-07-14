@@ -291,10 +291,13 @@ Full result: `2026-07-14-t6040-pcie-barrier-diagnostic.md`.
 
 All three traced transcripts are exactly 407 lines and 25,940 bytes and end
 after `[70] done`. This makes trace volume/timing a live alternative to any
-specific AXI write. The next control should print the same ADT-derived AXI
-pre/`done` lines without PMGR or controller MMIO. A same-boundary fault would
-identify the trace/log path as the artifact; a clean completion would justify
-an AXI prefix-and-hold bisection. That control requires separate approval.
+specific AXI write. Main `3e772779`, binary SHA-256
+`c9296b8d1ca146a32c7a1ba1bf17b7091281588ab90d16a69f0718c5a8fa04ea`,
+prepares the next control: print the same ADT-derived AXI pre/`done` lines
+without PCIe PMGR or controller MMIO. A same-boundary fault would identify the
+trace/log path as the artifact; a clean completion would justify an AXI
+prefix-and-hold bisection. It requires separate approval; see
+`2026-07-14-t6040-pcie-trace-dry-run.md`.
 
 ## Full-path gate
 

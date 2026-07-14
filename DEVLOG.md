@@ -401,8 +401,11 @@ not latched early enough to attribute a write. Recovery restored a quiescent
 proxy. Transcript: `logs/t6040-console-20260714-pcie-barrier.log`, SHA-256
 `cebc058921b62b2f594855bb65db28b312570b6c707f5a29a29480c31c04667b`.
 All three traced logs have the identical 407-line/25,940-byte boundary; use a
-zero-PCIe-write trace-volume control before another MMIO attempt. See
-`done/2026-07-14-t6040-pcie-barrier-diagnostic.md`.
+zero-PCIe-write trace-volume control before another MMIO attempt. It is prepared
+at main `3e772779`, binary SHA-256
+`c9296b8d1ca146a32c7a1ba1bf17b7091281588ab90d16a69f0718c5a8fa04ea`,
+and returns before PCIe PMGR or controller access. It requires new approval. See
+`done/2026-07-14-t6040-pcie-trace-dry-run.md`.
 Full details are in `done/2026-07-14-t6040-wireless-pcie-map.md`.
 
 ### Watchdog (2026-07-11)

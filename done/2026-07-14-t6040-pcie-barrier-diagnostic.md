@@ -76,8 +76,11 @@ Transcript: `logs/t6040-console-20260714-pcie-barrier.log`, SHA-256
 
 The two earlier traced logs have the same 407-line/25,940-byte size and end
 after the same trace line. The next diagnostic should therefore be a
-zero-PCIe-write trace-volume control, not another write-order variant. It should
-enumerate the ADT AXI tunables and print identical pre/`done` lines without
+zero-PCIe-write trace-volume control, not another write-order variant. Main
+`3e772779`, binary SHA-256
+`c9296b8d1ca146a32c7a1ba1bf17b7091281588ab90d16a69f0718c5a8fa04ea`,
+enumerates the ADT AXI tunables and prints identical pre/`done` lines without
 enabling PCIe clocks or reading/writing controller registers. If that control
 completes, continue with a separately approved prefix-and-hold bisection. If it
-faults at the same output boundary, debug the m1n1 trace/log path instead.
+faults at the same output boundary, debug the m1n1 trace/log path instead. Exact
+gate: `2026-07-14-t6040-pcie-trace-dry-run.md`.
