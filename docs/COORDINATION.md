@@ -23,21 +23,24 @@ Only the **live rig** is exclusive. Coordinate that, and only that.
 a holder dies or wedges the cable. State lives in `.rig/` (gitignored, shared
 between the agents via the local filesystem).
 
-`scripts/rig-guard.sh` is the enforcement hook a rig-touching script *can*
-source to refuse running unless the caller holds the lease. **It is not yet
-wired into the live scripts** (`t6040-boot-dcuart.sh`,
-`t6040-debugusb-console.sh`, `t6040-bootcap-fb.sh`) — wiring a fail-closed check
-into a shared tool while the other agent is mid-experiment can wreck that run,
-so:
+`scripts/rig-guard.sh` is sourced by the three rig-touching scripts
+(`t6040-boot-dcuart.sh`, `t6040-debugusb-console.sh`, `t6040-bootcap-fb.sh`) and
+enforces the lease. Its semantics are chosen so it protects a holder without
+ever false-positiving an idle run:
 
-- The guard is **fail-open by default**: on a violation it only WARNs and lets
-  the script proceed. It REFUSES (exit 5) only under `RIG_ENFORCE=1`.
-- **Wire the `source` line into the live scripts only when the rig is idle AND
-  both agents reliably acquire the lease before driving.** Until then the lease
-  is honor-system, backed by `rig-lease.sh status` before you touch the rig.
+- **A live lease held by the OTHER agent → always REFUSE (exit 5).** This is the
+  only case that corrupts the KIS link, so it is unconditional. `RIG_BYPASS=1`
+  overrides it — for genuine manual recovery only.
+- **Idle rig (no lease, or the holder's lease expired) → PROCEED.** A solo run
+  on an idle rig is never blocked, so an agent that hasn't adopted the lease
+  yet is not broken by the guard.
+- **Soft nudges** ("you didn't acquire", "your lease expired", "needs
+  recovery") only WARN and proceed — unless you set `RIG_ENFORCE=1`, which makes
+  them fatal too. Flip that on globally once both agents reliably acquire first.
 
-Until wired, the discipline is simply: **run `scripts/rig-lease.sh status`
-before driving; if it's HELD by the other agent, do offline work.**
+So the discipline is: **`RIG_AGENT=<you> scripts/rig-lease.sh acquire` before
+driving.** If you skip it on an idle rig you'll get a warning but proceed; if
+the other agent holds the rig you'll be stopped.
 
 ```sh
 scripts/rig-lease.sh status                          # who holds it, countdown, queue
