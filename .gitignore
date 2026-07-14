@@ -6,3 +6,4 @@
 .rig/
 # jq writes tickets atomically via a .tmp sidecar; never commit a stray one.
 tickets/*.tmp
+.tmp/
