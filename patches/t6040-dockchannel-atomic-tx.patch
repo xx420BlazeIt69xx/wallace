@@ -1,0 +1,214 @@
+From 90167be268d572cd0e73bea6f3fc9ff2a173c475 Mon Sep 17 00:00:00 2001
+From: CJ Damsleth <kim@damsleth.no>
+Date: Tue, 14 Jul 2026 18:10:12 +0200
+Subject: [PATCH] mailbox: apple: add bounded atomic transmit
+
+The normal mailbox path needs an IRQ or delayed-work callback. That cannot
+be used by a panic-safe console, and a caller cannot wait on the controller
+lock if another CPU stopped while holding it.
+
+Add a controller-specific helper which claims an idle FIFO and writes at
+most one FIFO-sized payload. It polls for drain with a hard 100 ms ceiling.
+It does not allocate, sleep, schedule work, enable an interrupt, program a
+threshold, or print an error. Serialize normal and atomic sends with an
+atomic owner so the panic path never waits on the regular spinlock.
+
+Signed-off-by: CJ Damsleth <kim@damsleth.no>
+
+diff --git a/drivers/mailbox/apple-dockchannel.c b/drivers/mailbox/apple-dockchannel.c
+index 26715f369537..6f5b373d10f6 100644
+--- a/drivers/mailbox/apple-dockchannel.c
++++ b/drivers/mailbox/apple-dockchannel.c
+@@ -10,9 +10,11 @@
+  * FIFO accesses themselves.
+  */
+ 
++#include <linux/atomic.h>
+ #include <linux/device.h>
+ #include <linux/interrupt.h>
+ #include <linux/io.h>
++#include <linux/iopoll.h>
+ #include <linux/mailbox/apple-dockchannel.h>
+ #include <linux/mailbox_controller.h>
+ #include <linux/module.h>
+@@ -43,6 +45,12 @@
+ #define DATA_RX32			0x28
+ #define DATA_RX_COUNT			0x2c
+ 
++enum apple_dockchannel_tx_owner {
++	APPLE_DOCKCHANNEL_TX_IDLE,
++	APPLE_DOCKCHANNEL_TX_ASYNC,
++	APPLE_DOCKCHANNEL_TX_ATOMIC,
++};
++
+ struct apple_dockchannel {
+ 	struct device *dev;
+ 	struct mbox_controller controller;
+@@ -66,6 +74,7 @@ struct apple_dockchannel {
+ 	size_t tx_len;
+ 	size_t tx_pos;
+ 	bool tx_active;
++	atomic_t tx_owner;
+ 
+ 	u8 rx_buf[APPLE_DOCKCHANNEL_FIFO_SIZE];
+ };
+@@ -134,6 +143,62 @@ static void apple_dockchannel_write_pending(struct apple_dockchannel *dc)
+ 	dc->tx_pos = dc->tx_len - left;
+ }
+ 
++static void apple_dockchannel_atomic_write(struct apple_dockchannel *dc,
++					   const void *data, size_t len)
++{
++	const u8 *p = data;
++
++	while (len >= sizeof(u32)) {
++		writel_relaxed(get_unaligned_le32(p),
++			       dc->data_base + DATA_TX32);
++		p += sizeof(u32);
++		len -= sizeof(u32);
++	}
++
++	while (len--)
++		writel_relaxed(*p++, dc->data_base + DATA_TX8);
++}
++
++int apple_dockchannel_send_atomic(struct mbox_chan *chan,
++				  const void *data, size_t len,
++				  unsigned int timeout_us)
++{
++	struct apple_dockchannel *dc;
++	void __iomem *tx_free;
++	u32 avail;
++	int ret;
++
++	if (!chan || !chan->con_priv || !data || !len || !timeout_us ||
++	    timeout_us > APPLE_DOCKCHANNEL_ATOMIC_MAX_TIMEOUT_US)
++		return -EINVAL;
++	if (len > APPLE_DOCKCHANNEL_FIFO_SIZE)
++		return -EMSGSIZE;
++
++	dc = chan->con_priv;
++	if (atomic_cmpxchg(&dc->tx_owner, APPLE_DOCKCHANNEL_TX_IDLE,
++			   APPLE_DOCKCHANNEL_TX_ATOMIC) !=
++	    APPLE_DOCKCHANNEL_TX_IDLE)
++		return -EBUSY;
++
++	tx_free = dc->data_base + DATA_TX_FREE;
++	avail = readl_relaxed(tx_free);
++	if (avail != APPLE_DOCKCHANNEL_FIFO_SIZE) {
++		ret = -EBUSY;
++		goto out_release;
++	}
++
++	apple_dockchannel_atomic_write(dc, data, len);
++	ret = readl_relaxed_poll_timeout_atomic(tx_free, avail,
++						avail == APPLE_DOCKCHANNEL_FIFO_SIZE,
++						1, timeout_us);
++
++out_release:
++	atomic_cmpxchg(&dc->tx_owner, APPLE_DOCKCHANNEL_TX_ATOMIC,
++		       APPLE_DOCKCHANNEL_TX_IDLE);
++	return ret;
++}
++EXPORT_SYMBOL_GPL(apple_dockchannel_send_atomic);
++
+ static void apple_dockchannel_read(struct apple_dockchannel *dc, void *buf,
+ 				   size_t count)
+ {
+@@ -167,11 +232,17 @@ static int apple_dockchannel_send_data(struct mbox_chan *chan, void *data)
+ 
+ 	if (msg->len > APPLE_DOCKCHANNEL_FIFO_SIZE)
+ 		return -EMSGSIZE;
++	if (atomic_cmpxchg(&dc->tx_owner, APPLE_DOCKCHANNEL_TX_IDLE,
++			   APPLE_DOCKCHANNEL_TX_ASYNC) !=
++	    APPLE_DOCKCHANNEL_TX_IDLE)
++		return -EBUSY;
+ 
+ 	spin_lock_irqsave(&dc->lock, flags);
+ 
+ 	if (dc->tx_active || !apple_dockchannel_tx_empty(dc)) {
+ 		spin_unlock_irqrestore(&dc->lock, flags);
++		atomic_cmpxchg(&dc->tx_owner, APPLE_DOCKCHANNEL_TX_ASYNC,
++			       APPLE_DOCKCHANNEL_TX_IDLE);
+ 		return -EBUSY;
+ 	}
+ 
+@@ -232,6 +303,8 @@ static void apple_dockchannel_shutdown(struct mbox_chan *chan)
+ 	spin_lock_irqsave(&dc->lock, flags);
+ 	apple_dockchannel_irq_disable(dc, dc->irq_tx | dc->irq_rx);
+ 	dc->tx_active = false;
++	atomic_cmpxchg(&dc->tx_owner, APPLE_DOCKCHANNEL_TX_ASYNC,
++		       APPLE_DOCKCHANNEL_TX_IDLE);
+ 	spin_unlock_irqrestore(&dc->lock, flags);
+ }
+ 
+@@ -261,6 +334,9 @@ static irqreturn_t apple_dockchannel_irq(int irq, void *data)
+ 			apple_dockchannel_irq_disable(dc, dc->irq_tx);
+ 			tx_done = dc->tx_active;
+ 			dc->tx_active = false;
++			atomic_cmpxchg(&dc->tx_owner,
++				       APPLE_DOCKCHANNEL_TX_ASYNC,
++				       APPLE_DOCKCHANNEL_TX_IDLE);
+ 		} else {
+ 			pending &= ~dc->irq_tx;
+ 		}
+@@ -325,6 +401,8 @@ static void apple_dockchannel_poll_work(struct work_struct *work)
+ 	spin_lock_irqsave(&dc->lock, flags);
+ 	if (dc->tx_active && apple_dockchannel_tx_empty(dc)) {
+ 		dc->tx_active = false;
++		atomic_cmpxchg(&dc->tx_owner, APPLE_DOCKCHANNEL_TX_ASYNC,
++			       APPLE_DOCKCHANNEL_TX_IDLE);
+ 		tx_done = true;
+ 	}
+ 	spin_unlock_irqrestore(&dc->lock, flags);
+@@ -376,6 +454,7 @@ static int apple_dockchannel_probe(struct platform_device *pdev)
+ 
+ 	dc->dev = dev;
+ 	spin_lock_init(&dc->lock);
++	atomic_set(&dc->tx_owner, APPLE_DOCKCHANNEL_TX_IDLE);
+ 	platform_set_drvdata(pdev, dc);
+ 	dc->irq_tx = IRQ_TX;
+ 	dc->irq_rx = IRQ_RX;
+diff --git a/include/linux/mailbox/apple-dockchannel.h b/include/linux/mailbox/apple-dockchannel.h
+index 04d2fc44f12f..e7ecd5401d2a 100644
+--- a/include/linux/mailbox/apple-dockchannel.h
++++ b/include/linux/mailbox/apple-dockchannel.h
+@@ -10,6 +10,10 @@
+ 
+ #include <linux/types.h>
+ 
++struct mbox_chan;
++
++#define APPLE_DOCKCHANNEL_ATOMIC_MAX_TIMEOUT_US	100000
++
+ /**
+  * struct apple_dockchannel_msg - DockChannel mailbox payload
+  * @data: Pointer to the byte stream payload
+@@ -26,4 +30,24 @@ struct apple_dockchannel_msg {
+ 	size_t len;
+ };
+ 
++/**
++ * apple_dockchannel_send_atomic() - bounded polled DockChannel transmit
++ * @chan: DockChannel mailbox channel
++ * @data: Byte stream payload
++ * @len: Number of payload bytes
++ * @timeout_us: FIFO drain timeout in microseconds
++ *
++ * Write one payload without allocating, sleeping, scheduling work, or relying
++ * on a TX interrupt. The call fails rather than waiting if another normal or
++ * atomic transmit owns the FIFO. @timeout_us must be non-zero and no greater
++ * than %APPLE_DOCKCHANNEL_ATOMIC_MAX_TIMEOUT_US.
++ *
++ * Context: Any context, including atomic and panic context.
++ * Return: 0 on success, -EBUSY if the FIFO is owned or non-empty,
++ * -ETIMEDOUT if it does not drain, or another negative errno on bad input.
++ */
++int apple_dockchannel_send_atomic(struct mbox_chan *chan,
++				  const void *data, size_t len,
++				  unsigned int timeout_us);
++
+ #endif /* _LINUX_MAILBOX_APPLE_DOCKCHANNEL_H_ */
+-- 
+2.47.1
+
