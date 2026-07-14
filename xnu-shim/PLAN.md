@@ -76,7 +76,17 @@ M1/M2 Asahi, layered on top, not a new SPTM gate. See P4.
 
 ## Immediate next action (the real critical path)
 
-**Ticket 053 (HV genter trace).** It is the pivot: it answers domain provenance (go/no-go
-for the whole route) and captures the live per-op arg registers that turn `sptm_nvme_iface.h`
-from spec into truth. It needs the rig + m1n1 GXF-on-M4 brought up first (ticket 046). Until
-053 runs, P2–P4 are premature. P0 (this pass) is the honest extent of offline progress.
+**UPDATE 2026-07-15: the HV genter-trace (ticket 053) is DEAD.** m1n1-HV is SPTM-blocked on
+T6040 (`docs/DEVLOG.md` dead-ends:668; `done/2026-07-15-t6040-sptm-hv-trace-preflight.md`), so
+there is no hypervisor to trace macOS's SPTM calls with. 053/056 closed as infeasible. The two
+things it was meant to deliver are re-homed:
+
+- **Per-op arg contract → static** (ticket 051 SPTM-blob handler disasm + 054 cross-SoC diff).
+  No rig, no approval. This is the actionable next step.
+- **Domain provenance across the pivot → ticket 055 escalation + static blob reasoning.** No
+  longer empirically testable pre-build (that was the HV trace's job); the #asahi-dev
+  escalation is now the primary answer, the shim boot itself (Phase 3+) the only full one.
+
+**Consequence:** there is no useful *rig* experiment for the shim track until the shim is
+built (Phase 2+, gated on the signing path). Pre-build progress is entirely static (051/054)
++ the escalation (055). The rig belongs to the other tracks meanwhile.

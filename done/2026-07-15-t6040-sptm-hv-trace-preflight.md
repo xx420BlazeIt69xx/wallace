@@ -95,10 +95,41 @@ the harness design above. Two findings:
 
 **This removes the scariest risk** (the uncharacterized CPU-feature flip) and reuses proven
 infrastructure. **But it surfaces the real gating unknown for 053:** *can m1n1's HV boot the
-M4's macOS as a guest at all?* asahi_neo's HV-autoboot on A18 Pro timed out at XNU entry, and
-this project has used m1n1 mostly for raw-Linux boot + proxyclient RE, not full macOS-guest HV
-on M4. That — not GXF, not the ABI — is now the load-bearing prerequisite, and it is itself a
-lower-risk rig test (boot macOS under HV, confirm it reaches `init_xnu_ro_data`) before any
-SPTM tracing. **Ticket 056 is rescoped accordingly:** (1) confirm/bring up m1n1 HV macOS-guest
-boot on M4; (2) write the `add_hw_bp`+`trace_range` proxyclient probe (x16 decode, JSON log);
-(3) cross-review packet. The GXF-enable draft patch is **dropped** — not needed.
+M4's macOS as a guest at all?*
+
+---
+
+## BLOCKED — 053 is INFEASIBLE on T6040 (2026-07-15, fable). Do not run.
+
+Prior-art check answered the gating unknown, and the answer is no. The project already
+documents it, in `docs/DEVLOG.md` **"Dead ends (do not re-investigate)"** (line 668):
+
+> *"…m1n1's vuart (hv-only → dead after handoff); **m1n1 hv is SPTM-blocked entirely.**"*
+
+Corroborated: `done/2026-07-09-t6040-first-light-session.md:12` ("SPTM/GL2 environment
+that's unusable") and `DEVLOG.md:526-529` (upstream now gates hv SPRR/GXF writes on
+`apple_sysregs_unlocked` to *tolerate* locked-sysreg machines like this one, but "whether a
+degraded hv is actually usable on the T6040 is untested" — and 668 records that it isn't).
+
+**The HV-trace requires booting macOS under m1n1-HV; m1n1-HV does not function on this M4
+because of SPTM. So there is no HV to hang breakpoints on.** The entire approach — original
+"trap genter", revised "HW-bp under HV" — is dead on T6040. Approval (recorded 2026-07-15,
+by=cj) is moot for this method; the rig was **not** driven (correctly — running it would
+re-open a documented grave). **Tickets 053 and 056 are closed as infeasible.**
+
+## Reframe — how to answer the two questions without HV
+
+- **Per-op argument contract (was 053b):** get it **statically** from the SPTM blob — ticket
+  **051** (disassemble the 9 `func_state` handlers) + **054** (cross-SoC diff). No rig, no HV.
+  This recovers most of what the MMIO trace would have shown.
+- **Domain provenance across the XNU→Linux pivot (was 053a) — the hard one:** cannot be
+  measured here (no HV). It now rests on (1) **static reasoning** from the SPTM dispatch code
+  (does `CORE_SPTM_FUNCTION` derive the caller domain from `TPIDR`, and is that `TPIDR` state
+  inherited by a Linux that took over EL1 — readable in the blob), and (2) the **#asahi-dev
+  escalation (ticket 055)**, which becomes *more* important now that we can't test it
+  ourselves — the M1/M2/M3 pmap/SPTM folks may simply know. Ultimately the shim boot itself
+  (Phase 3+) is the only empirical answer, and that is the whole upstream-scale effort.
+
+Net: the shim route's remaining pre-build work is **entirely static + the escalation** — there
+is no useful rig experiment for this track until the shim exists. The rig belongs to the other
+tracks (USB root, SMP, cpufreq, PCIe).
