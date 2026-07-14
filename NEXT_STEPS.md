@@ -18,15 +18,19 @@ DebugUSB recovery restored a fresh proxy. Full hashes and result:
 This does not rehabilitate the old "dead IRQ across all 4096 AIC inputs"
 claim: that scan still enabled the FIFO with MTP's wrong RX BIT(3), while the
 corrected run could not use RX to retrieve `/proc/interrupts`. A TX-only,
-self-reporting initramfs is now built. It takes `/proc/interrupts` snapshots
-around a ten-second interval with no reporter TX and accepts at most one host
-probe line during that window. It reuses the exact bounded kernel and DTB; only
-the initramfs is new. Exact hash, sequence, and fresh approval gate:
+self-reporting initramfs then ran once. It printed its instruction banner, took
+the approved probe line during the TX-silent interval, and never emitted its
+post-window report. The BusyBox timeout path works in an arm64 PTY test, so the
+timing strongly suggests the RX event stalled the shared IRQ-driven TX
+completion path or tripped the guard. Exact result:
 `done/2026-07-14-t6040-dockchannel-irq-tx-report.md`.
 
-Keep the 4,096-entry storm guard and the standard 5 ms poll-mode DT. Do not run
-the prepared image without fresh explicit approval, and do not publish the old
-scan as a hardware erratum yet.
+Prepare a diagnostic that leaves RX interrupt-driven on BIT(1) but polls TX
+completion, so disabling a storming RX IRQ cannot suppress the evidence relay.
+It must retain the 4,096-entry guard, report `/proc/interrupts` and dmesg, and
+use the standard 5 ms full-poll mode everywhere except its separate diagnostic
+DT. Any revised live image needs a new exact review and approval. Do not retry
+either completed BIT(1) image or publish the old scan as a hardware erratum.
 
 ## 0.1 Extend the proven T6040 PCIe path through PHY setup
 

@@ -208,12 +208,18 @@ working fallback remains
 `apple,poll-mode` (5 ms delayed work; TX-done on FIFO drain, RX via RX_COUNT).
 `patches/t6040-dockchannel-poll.patch` now accepts explicit per-instance masks;
 a full record of the one-run BIT(1), IRQ-360 retest is in
-`done/2026-07-14-t6040-dockchannel-irq-retest.md`.
+`done/2026-07-14-t6040-dockchannel-irq-retest.md`. A TX-only scheduled reporter
+then accepted one exact host probe but stopped after its instruction banner;
+its userspace read timeout was validated separately. This strongly suggests RX
+stalled the shared IRQ-driven TX completion path or tripped the storm guard,
+but is not direct proof because the guard message could no longer be relayed.
+Full result: `done/2026-07-14-t6040-dockchannel-irq-tx-report.md`.
 
 Do not publish the old result as a hardware erratum yet. The next diagnostic
-must self-report the AIC and driver-handler counts over TX, without depending
-on the broken RX path. Remaining routing questions include whether the line is
-fused off on the chopped die, routed to AOP, or KIS-agent-only.
+must make TX completion independent of the AIC line, then self-report the AIC
+and driver-handler state without depending on the broken RX path. Remaining
+routing questions include whether the line is fused off on the chopped die,
+routed to AOP, or KIS-agent-only.
 
 MMIO caution: the dockchannel-uart block maps ONLY +0xc000 (irq, 24 B) and
 +0x28000..+0x38004 (config/data). Reading other offsets (e.g. +0x20000) raises

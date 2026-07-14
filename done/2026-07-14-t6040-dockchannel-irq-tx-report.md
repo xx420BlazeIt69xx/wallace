@@ -1,9 +1,11 @@
 # T6040 DockChannel-UART TX-only IRQ counter diagnostic
 
-Prepared offline 2026-07-14 after the corrected RX BIT(1) interactive run
-remained silent. **Not approved or run.** This follow-up changes only the
-initramfs behavior: it reuses the exact storm-bounded kernel, DTB, and
-zero-PCIe-write m1n1 binary from the completed one-run test.
+Prepared and run once on 2026-07-14 after the corrected RX BIT(1) interactive
+run remained silent. The unique instruction banner printed and the host sent
+the exact approved probe line in the silent window, but no post-window report
+appeared. This follow-up changed only the initramfs behavior: it reused the
+exact storm-bounded kernel, DTB, and zero-PCIe-write m1n1 binary from the first
+corrected run.
 
 ## Why this test exists
 
@@ -66,7 +68,32 @@ accessed.
 
 ## Approval gate
 
-This is a new live run even though its kernel writes are unchanged. It requires
-fresh explicit approval for one boot of the exact hashes above and one host
-injection of the exact probe line during the ten-second silent window. No live
-run has occurred yet.
+The maintainer approved one boot of the exact hashes above and one exact probe
+line. That run is complete. Any revised image or retry requires a new exact
+review and approval.
+
+## Live result
+
+The diagnostic printed all five instruction lines. Six seconds after the final
+line appeared, the host injected exactly `IRQ_BIT1_PROBE\n`. No subsequent UART
+output appeared during 35 seconds of capture: neither the measurement-complete
+line nor either interrupt snapshot was transmitted. The log remained 544
+bytes. Following the gate, the image was not retried; a sanctioned DebugUSB
+reboot restored a fresh m1n1 proxy. No PCIe, NVMe, or storage access occurred.
+
+Transcript:
+`logs/t6040-console-20260714-dockchannel-irq-tx-report.log`, SHA-256
+`b6ca4474b017035e5b0335f955abb8dd98097a1af4864fb90e185cf084db9ad2`.
+
+The embedded BusyBox was separately tested on an arm64 pseudo-terminal: its
+background `read -t` expired in the requested two seconds with status 1. The
+same init script also passed BusyBox `sh -n`. A userspace timeout hang is
+therefore not a credible explanation for 35 seconds of silence.
+
+The timing strongly suggests that enabling or exercising RX BIT(1) stalls the
+shared interrupt-driven mailbox completion path—most plausibly by tripping the
+4,096-entry guard and disabling the shared IRQ—but the guard message could not
+be relayed after TX completion stopped, so this is still an inference. The next
+diagnostic must make TX completion independent of the AIC line while leaving RX
+interrupt-driven, then emit the guard message and counters over that polled TX
+path. Do not retry this image unchanged.
