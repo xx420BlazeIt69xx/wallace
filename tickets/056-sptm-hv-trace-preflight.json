@@ -5,9 +5,11 @@
   "state": "open",
   "track": "storage",
   "priority": "P1",
-  "desc": "Offline preflight for ticket 053 (SPTM HV genter-trace), following the preflight->cross-review->approve->gated-run pattern (cf. 034->005, 044). Deliverables: (1) m1n1 HV-GXF-on-M4 feasibility note + a minimal DRAFT patch setting .mmu_sprr for features_m4 (currently OFF, chickens.c:112 'XXX figure out') and verifying the gxf_init/supports_gxf path -- draft only, NOT flashed, it is the maintainer-gated CPU-feature change; (2) HV genter-interposition design -- resolve whether a guest EL1->GL genter is observable from EL2 or needs GXF_CONFIG/ENTER MSR trapping (m1n1 hv SPRR/GXF path is gated on apple_sysregs_unlocked = false on locked-sysreg T6040); (3) rewrite asahi_neo probe_sptm.py for the x16 descriptor + m1n1 hv API (JSON log of domain/table/endpoint + x0..x7 + guest ELR); (4) cross-review packet + hashes + stop points. Read-only trace; no SPTM calls/MMIO writes from m1n1; internal SSD untouched. Plan: done/2026-07-15-t6040-sptm-hv-trace-preflight.md. Blocks 053; relates to 046 (m1n1 series) and 051 (arg cross-check)",
+  "desc": "Offline preflight for ticket 053 (SPTM HV trace). RESCOPED 2026-07-15 (fable) after reading the m1n1 HV code: the 'trap every genter' premise is INFEASIBLE (genter is a lateral EL1->GL1 transition, never traps to EL2; hv_exc.c only handles guest GXF *sysreg* access on the apple_sysregs_unlocked path = false on locked T6040). The m1n1 GXF-enable (mmu_sprr) draft patch is DROPPED -- not needed. Viable harness uses m1n1's existing HV debug infra: add_hw_bp(vaddr,hook) + single-step + trace_range (MMIO). Deliverables: (1) confirm/bring up m1n1 HV macOS-GUEST boot on M4 -- the real gating unknown (asahi_neo autoboot timed out at XNU entry on A18 Pro; this project hasn't run full macOS-guest HV on M4); a lower-risk rig test than any CPU-feature flip. (2) proxyclient probe: HW breakpoint at guard_enter (kc VA 0x4736830, slid) logging x16 domain|table|endpoint + x0..x7 + TPIDR_EL1 (domain-provenance datum) + guest ELR, then step; trace_range the ANS/SART BARs for the per-op arg contract (feeds 051). (3) cross-review packet + stop points. Read-only; no SPTM calls/MMIO writes from m1n1; internal SSD untouched. Plan: done/2026-07-15-t6040-sptm-hv-trace-preflight.md",
   "author": "fable",
-  "deps": ["046"],
+  "deps": [
+    "046"
+  ],
   "hashes": null,
   "created": 1784066858
 }

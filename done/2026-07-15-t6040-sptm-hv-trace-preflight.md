@@ -65,3 +65,40 @@ Confirmed against `~/Code/m1n1` @ `16b1f61f`:
 
 Until both land, 053 stays unrunnable and this track's progress is the offline 056 work.
 No rig was driven to produce this preflight; the lease was checked (FREE) but not taken.
+
+---
+
+## Design revision (2026-07-15, fable) — the "trap genter" premise was wrong; use HW breakpoints
+
+Reading the m1n1 HV code (`src/gxf.c`, `src/hv_exc.c`, `proxyclient/m1n1/hv/`) overturned
+the harness design above. Two findings:
+
+1. **`genter` cannot be trapped to EL2.** It is a *lateral* EL1→GL1 transition (GXF), not an
+   exception, so a hypervisor at EL2 never sees it — confirmed by the code: m1n1's own
+   `gl2_call` issues `genter` freely, and `hv_exc.c` only intercepts guest *sysreg* access
+   to GXF regs (`GXF_STATUS_EL1`, `TPIDR_GL1`, `ELR_GL1`) and only on the
+   `apple_sysregs_unlocked` path (false on locked-sysreg T6040). asahi_neo's `probe_sptm.py`
+   premise ("hook the GXF entry, log every genter") is **infeasible as stated**.
+2. **m1n1's HV already has the right tool: hardware breakpoints + single-step + MMIO trace.**
+   `proxyclient/m1n1/hv`: `add_hw_bp(vaddr, hook)`, `add_sym_bp`, `handle_brk`, `step()`,
+   `trace_range`/`trace_device` (the same infra behind this project's PCIe/DockChannel RE),
+   backed by `MDCR_EL2`/`MDSCR` (EL2 owns guest debug). This *does* let us observe SPTM calls.
+
+**Revised harness (no m1n1 GXF-enable — drop the gated `mmu_sprr` flip entirely):**
+- Set **one HW breakpoint at `guard_enter`** (kernelcache VA `0x4736830`, slid) — the single
+  gate all 143 table-0 SPTM veneers call. Its hook logs `x16` (domain|table|endpoint) + x0..x7
+  + `TPIDR_EL1` (the tracked caller domain — this is the **domain-provenance** datum) + guest
+  ELR, then steps over. Add more BPs at specific NVMe-path sites as they're identified.
+- **`trace_range` the ANS/SART MMIO** (admin-queue BAR, IOQA/IOSQ/IOCQ regs, SART) to capture
+  the controller-side writes each op performs — the real per-op arg contract (ticket 051).
+- Boot macOS as the guest via `m1n1.hv`.
+
+**This removes the scariest risk** (the uncharacterized CPU-feature flip) and reuses proven
+infrastructure. **But it surfaces the real gating unknown for 053:** *can m1n1's HV boot the
+M4's macOS as a guest at all?* asahi_neo's HV-autoboot on A18 Pro timed out at XNU entry, and
+this project has used m1n1 mostly for raw-Linux boot + proxyclient RE, not full macOS-guest HV
+on M4. That — not GXF, not the ABI — is now the load-bearing prerequisite, and it is itself a
+lower-risk rig test (boot macOS under HV, confirm it reaches `init_xnu_ro_data`) before any
+SPTM tracing. **Ticket 056 is rescoped accordingly:** (1) confirm/bring up m1n1 HV macOS-guest
+boot on M4; (2) write the `add_hw_bp`+`trace_range` proxyclient probe (x16 decode, JSON log);
+(3) cross-review packet. The GXF-enable draft patch is **dropped** — not needed.
