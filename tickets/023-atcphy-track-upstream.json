@@ -1,0 +1,13 @@
+{
+  "seq": "023",
+  "slug": "atcphy-track-upstream",
+  "needs": "offline",
+  "state": "open",
+  "track": "usb",
+  "priority": "P2",
+  "desc": "[UPSTREAM] Watch upstream/atcphy-new-tunables; USB2 fallback is fine; map per-bucket reg_offset ONLY if upstream publishes it (never invent)",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039024
+}

@@ -1,0 +1,13 @@
+{
+  "seq": "005",
+  "slug": "maxcpus2-smoke",
+  "needs": "rig",
+  "state": "proposed",
+  "track": "smp",
+  "priority": "P2",
+  "desc": "maxcpus=2 bring-up: 2nd core online, /proc/cpuinfo, watch WFE/idle park (Stage C exit). hashes TBD; cross-review before boot",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039023
+}

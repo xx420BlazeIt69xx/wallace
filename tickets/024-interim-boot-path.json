@@ -1,0 +1,13 @@
+{
+  "seq": "024",
+  "slug": "interim-boot-path",
+  "needs": "offline",
+  "state": "open",
+  "track": "distro",
+  "priority": "P1",
+  "desc": "Document+prototype the interim boot path: m1n1 chainloads U-Boot/kernel from the APFS m1n1 volume (raw enrollment) — the 'my machine boots Linux' milestone",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039024
+}

@@ -1,0 +1,15 @@
+{
+  "seq": "004",
+  "slug": "trackpad-motion-retest",
+  "needs": "rig",
+  "state": "proposed",
+  "track": "hid",
+  "priority": "P2",
+  "desc": "motion retest with tpmtfw-j614s.bin; STOP if MTP requests reset GPIO (PMU-forbidden). hashes TBD; cross-review before boot",
+  "author": "claude",
+  "deps": [
+    "016"
+  ],
+  "hashes": null,
+  "created": 1784039023
+}

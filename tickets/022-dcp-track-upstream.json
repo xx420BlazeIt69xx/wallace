@@ -1,0 +1,13 @@
+{
+  "seq": "022",
+  "slug": "dcp-track-upstream",
+  "needs": "offline",
+  "state": "open",
+  "track": "display",
+  "priority": "P2",
+  "desc": "[UPSTREAM] Track the asahi DCP driver M4/26.x support; prep j614s DCP DT wiring. simpledrm is the honest interim",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039024
+}

@@ -1,0 +1,13 @@
+{
+  "seq": "007",
+  "slug": "sptm-service6-decode",
+  "needs": "offline",
+  "state": "open",
+  "track": "storage",
+  "priority": "P0",
+  "desc": "Decode SPTM service-6 ABI (ops 0-8) + the GENTER entry state (SPRR/GXF) macOS holds vs raw boot, from the paired kernelcache/IONVMeFamily (NEXT_STEPS §3)",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039023
+}

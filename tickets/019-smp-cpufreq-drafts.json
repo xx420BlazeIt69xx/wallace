@@ -1,0 +1,13 @@
+{
+  "seq": "019",
+  "slug": "smp-cpufreq-drafts",
+  "needs": "offline",
+  "state": "open",
+  "track": "smp",
+  "priority": "P1",
+  "desc": "Finalize the SMP/broken_wfi/MPIDR + cpufreq upstream drafts in done/; checkpatch; ready for CJ to post",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039024
+}

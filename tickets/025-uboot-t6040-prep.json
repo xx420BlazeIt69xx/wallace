@@ -1,0 +1,13 @@
+{
+  "seq": "025",
+  "slug": "uboot-t6040-prep",
+  "needs": "offline",
+  "state": "open",
+  "track": "distro",
+  "priority": "P2",
+  "desc": "U-Boot T6040 bring-up prep (near-free once kboot FDT+dwc3 are right) -> EFI -> GRUB/systemd-boot. dep: kboot FDT stable",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039024
+}

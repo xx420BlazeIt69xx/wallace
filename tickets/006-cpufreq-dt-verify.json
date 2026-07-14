@@ -1,0 +1,13 @@
+{
+  "seq": "006",
+  "slug": "cpufreq-dt-verify",
+  "needs": "rig",
+  "state": "proposed",
+  "track": "cpufreq",
+  "priority": "P2",
+  "desc": "wire apple,cluster-cpufreq in DT, boot, verify pstate transitions (Stage C exit). hashes TBD; cross-review before boot",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039023
+}

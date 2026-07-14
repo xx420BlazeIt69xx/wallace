@@ -1,0 +1,17 @@
+{
+  "seq": "001",
+  "slug": "dockchannel-tx-poll",
+  "needs": "rig",
+  "state": "proposed",
+  "track": "console",
+  "priority": "P1",
+  "desc": "Bounded RX BIT(1) telemetry: TX poll, RX cap 1000, hard cap 1024; independent review pending (NEXT_STEPS §0)",
+  "author": "claude",
+  "deps": [],
+  "hashes": {
+    "image": "ef60d5ea",
+    "dtb": "3d5bc90e",
+    "initramfs": "4697a5b6"
+  },
+  "created": 1784039023
+}

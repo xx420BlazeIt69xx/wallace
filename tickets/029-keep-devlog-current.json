@@ -1,0 +1,13 @@
+{
+  "seq": "029",
+  "slug": "keep-devlog-current",
+  "needs": "offline",
+  "state": "open",
+  "track": "xcut",
+  "priority": "P2",
+  "desc": "Keep DEVLOG.md / done/ current; convert every new dead-end into a documented grave",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039024
+}

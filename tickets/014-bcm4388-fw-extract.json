@@ -1,0 +1,13 @@
+{
+  "seq": "014",
+  "slug": "bcm4388-fw-extract",
+  "needs": "offline",
+  "state": "open",
+  "track": "wireless",
+  "priority": "P1",
+  "desc": "Extract BCM4388 WiFi/BT firmware for board apple,mriya from the paired macOS ESP (asahi-fwextract); stage for initramfs/rootfs",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039023
+}

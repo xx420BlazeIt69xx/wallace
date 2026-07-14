@@ -1,0 +1,13 @@
+{
+  "seq": "009",
+  "slug": "usb-root-fallback",
+  "needs": "offline",
+  "state": "open",
+  "track": "storage",
+  "priority": "P1",
+  "desc": "Design USB-attached NVMe/SSD as primary rootfs so the machine is daily-drivable without the internal SSD; document the boot flow end-to-end",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039023
+}

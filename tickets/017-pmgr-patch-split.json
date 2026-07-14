@@ -1,0 +1,13 @@
+{
+  "seq": "017",
+  "slug": "pmgr-patch-split",
+  "needs": "offline",
+  "state": "open",
+  "track": "pmgr",
+  "priority": "P1",
+  "desc": "Split the two-patch T6041 PMGR series; run checkpatch + both binding-schema validations; finalize commit messages (NEXT_STEPS §2)",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039023
+}

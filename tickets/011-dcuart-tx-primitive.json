@@ -1,0 +1,13 @@
+{
+  "seq": "011",
+  "slug": "dcuart-tx-primitive",
+  "needs": "offline",
+  "state": "open",
+  "track": "console",
+  "priority": "P1",
+  "desc": "Design+draft a bounded polled/atomic TX primitive for the DockChannel mailbox so ttydc is printk/panic-safe (NEXT_STEPS §2.2)",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039023
+}

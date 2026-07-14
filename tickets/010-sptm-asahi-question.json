@@ -1,0 +1,13 @@
+{
+  "seq": "010",
+  "slug": "sptm-asahi-question",
+  "needs": "offline",
+  "state": "open",
+  "track": "storage",
+  "priority": "P1",
+  "desc": "Draft an #asahi-dev question summarizing the T8140 SPTM NVMe boundary + evidence (draft only; CJ posts)",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039023
+}

@@ -1,0 +1,13 @@
+{
+  "seq": "002",
+  "slug": "pcie-op115",
+  "needs": "rig",
+  "state": "proposed",
+  "track": "pcie",
+  "priority": "P1",
+  "desc": "isolate op-115, first PHY-IP PLL RMW at 0x417040090 (NEXT_STEPS §0.1). benefits from ticket 013 PHY manifest",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039023
+}

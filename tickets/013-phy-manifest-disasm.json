@@ -1,0 +1,13 @@
+{
+  "seq": "013",
+  "slug": "phy-manifest-disasm",
+  "needs": "offline",
+  "state": "open",
+  "track": "pcie",
+  "priority": "P1",
+  "desc": "Finish offline disasm of the T6040 PHY tunable manifest (ops 115+); map each PHY-IP RMW to an ADT-derived address; produce the reviewed manifest for the next gated PHY run",
+  "author": "claude",
+  "deps": [],
+  "hashes": null,
+  "created": 1784039023
+}
