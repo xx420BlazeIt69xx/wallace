@@ -2,7 +2,7 @@
 
 ## Safety and connection
 
-- Target: MacBook Pro M4 Pro, T6040/J614s (Mac14,8), tethered from an M1 Max.
+- Target: MacBook Pro M4 Pro, T6040/J614s (Mac16,8), tethered from an M1 Max.
 - Proxy: `/dev/cu.usbmodemJ22GYCN4YG1`; `...YG3` is the secondary m1n1 UART,
   not a working raw-kernel console.
 - Read the root `AGENTS.md` and `proxyclient/AGENTS.md` before hardware access.
