@@ -1,6 +1,6 @@
 # T6040 USB2 external-root artifact set (2026-07-14)
 
-Ticket 032 (offline, P1, storage track). Reproducible artifact set for booting
+Ticket 032 (offline, P1, storage track). Rebuildable, hash-pinned artifact set for booting
 Linux with root on an external USB2 disk (ticket 009 design; internal NVMe
 SPTM-blocked, ticket 008), built on ticket 031's USB2-host DT candidate. Static
 build only; stops before any rig run.
@@ -9,11 +9,11 @@ build only; stops before any rig run.
 
 | Artifact | What | Status |
 |---|---|---|
-| `patches/t6040-dwc3-apple-force-host.patch` | the enabler: `apple,force-host-mode` | in repo; **applies clean on `t6040-usb-wip`** (verified in the kbuild container) |
+| `patches/t6040-dwc3-apple-force-host.patch` | the enabler: `apple,force-host-mode` | in repo; **applies clean on `wallace/t6040-bringup`** (verified in the kbuild container) |
 | `dts/t6040-j614s-dcuart-usb-host.dts` | USB2 host DT (all 3 ports forced host) | in repo (ticket 031); dtc-clean |
 | `scripts/t6040-init-usb-root` | dual-mode init (smoke + root) | in repo |
 | `scripts/t6040-kbuild.sh` `USB_HOST=1` block | reproducible kernel config + patch-apply + DTB | in repo |
-| kernel `Image-usb-host` / `.dtb` / `initramfs-usb-root.cpio.gz` | built binaries + hashes | **blocked — branch integration (see gate 1)** |
+| kernel `Image-usb-host` / `.dtb` / `initramfs-usb-root.cpio.gz` | built binaries + hashes | **gate 1 cleared — built on `wallace/t6040-bringup` (see update below)** |
 
 **Build status (2026-07-14):** the `USB_HOST=1` kernel build was attempted in the
 warm kbuild container against `BRANCH=t6040-usb-wip`. The force-host patch applied
@@ -27,6 +27,19 @@ therefore gated on integrating the dwc3-apple USB work and the mainline bring-up
 series onto one branch (gate 1) — a coordination step, not attempted here. Config,
 patch, DT, and init are all validated and reproducible; only the final link is
 blocked.
+
+**Gate 1 cleared (2026-07-21):** the branch divergence no longer exists. Both work
+streams — the dwc3-apple `force-{device,host}-mode` driver work (`DWC3_APPLE_HOST`
+enum + `apple,force-device-mode` base) and the full T6041 PMGR series — now live on
+`wallace/t6040-bringup`. There is no separate `t6040-usb-wip` to rebase; the two
+converged onto the one bring-up branch. Verified against that branch's tip
+(`96ac043df12f`): `t6040-pmgr-t6041-bindings.patch`, `t6040-pmgr-t6041-quirks.patch`,
+and `t6040-dwc3-apple-force-host.patch` all apply as a clean stack, and a full
+`USB_HOST=1 DOCKCHANNEL=1 BRANCH=wallace/t6040-bringup` build in the kbuild
+container applied every patch (`t6040-pmgr-t6041-quirks.patch applied OK`) — the
+exact line that failed on `t6040-usb-wip`. **The build recipe below must use
+`BRANCH=wallace/t6040-bringup` (the default), not the stale `BRANCH=t6040-usb-wip`.**
+Built binaries + hashes recorded at the end of this file.
 
 ## The enabler: apple,force-host-mode
 
@@ -51,9 +64,9 @@ only).
 
 One init, two modes:
 - **SMOKE** (no `root=` resolves): report dwc3/xhci/dart/usb-storage dmesg, USB
-  device tree, `/proc/partitions`, `blkid`, over the DockChannel console, then a
-  shell. This is the rig smoke test — proves the forced-host port enumerates a
-  device and survives past enumeration.
+  device tree and two `/proc/partitions` snapshots 10 seconds apart over the
+  DockChannel console, then a shell. This is the rig smoke test — proves the
+  forced-host port enumerates a device and survives past enumeration.
 - **ROOT**: `root=PARTUUID=<uuid>` (also `LABEL=`/`UUID=`/`/dev/*`), waits up to
   30 s for the disk, mounts `rootfstype` (default ext4), `switch_root`.
 It never mounts an internal device; any failure stops at a diagnostic shell.
@@ -63,19 +76,24 @@ It never mounts an internal device; any failure stops at a diagnostic shell.
 ```sh
 cp ~/Code/wallace/scripts/t6040-kbuild.sh ~/Code/wallace/patches/*.patch ~/Code/linux-build-out/
 cp ~/Code/wallace/dts/t6040-j614s-dcuart-usb-host.dts ~/Code/linux/arch/arm64/boot/dts/apple/
-podman exec -e DOCKCHANNEL=1 -e USB_HOST=1 -e BRANCH=t6040-usb-wip \
-    -e BUILD_DIR=/build/linux-usb-host2 kbuild bash /out/t6040-kbuild.sh image
+podman exec -e DOCKCHANNEL=1 -e USB_HOST=1 -e BRANCH=wallace/t6040-bringup \
+    -e BUILD_DIR=/build/linux-usb-host4 -e NPROC=1 \
+    kbuild bash /out/t6040-kbuild.sh image
 # initramfs:
 OUT=~/Code/linux-build-out INIT_SOURCE=~/Code/wallace/scripts/t6040-init-usb-root \
     DEST=~/Code/linux-build-out/initramfs-usb-root.cpio.gz \
     bash ~/Code/wallace/scripts/t6040-make-initramfs.sh
 ```
 
-Note the **branch**: the dwc3-apple USB driver work (force-{device,host}-mode)
-lives on `t6040-usb-wip`, not the mainline `feature/m4-m5-minimal-device-trees`
-the harness builds by default — `BRANCH=t6040-usb-wip` is required (kbuild.sh now
-honours the override). Integrating that driver work into the mainline bring-up
-branch is a separate coordination step (see gates).
+Note the **branch**: as of 2026-07-21 the dwc3-apple USB driver work
+(force-{device,host}-mode) and the T6041 PMGR series both live on
+`wallace/t6040-bringup` — this is the default branch and the one to build. The old
+`BRANCH=t6040-usb-wip` is stale (gate 1 was the divergence between them; now
+resolved). If the container's 8 GB VM flakes on `-j$(nproc)` with transient
+"No such file"/`fixdep` errors (a virtiofs/memory-pressure race, not a code
+failure), retry from an isolated copy of a known-good build directory with
+`NPROC=1`. The successful build used `/build/linux-usb-host4`; output from the
+flaky `/build/linux-usb-host3` tree was discarded.
 
 ## External rootfs recipe (populate at deploy)
 
@@ -111,9 +129,10 @@ console; `rootwait` plus the init's own 30 s wait covers USB enumeration.)
 
 ## Gates (why this stops here)
 
-1. **Build/branch integration.** USB host needs the `t6040-usb-wip` dwc3-apple
-   work; building requires `BRANCH=t6040-usb-wip`. Merging that driver support
-   into the mainline branch is a maintainer/coordination decision, not done here.
+1. **Build/branch integration.** ✅ **Resolved 2026-07-21.** The dwc3-apple USB
+   work and the T6041 PMGR series both live on `wallace/t6040-bringup`; all three
+   USB-path patches apply as a clean stack and the `USB_HOST=1` image builds on
+   that branch. No further integration/rebase is needed.
 2. **Rig smoke test before the rootfs.** The parked gadget effort enumerated once
    then went deaf (suspected missing `atc-phy,t6040` USB2 PHY driver / wrong
    dwc3-apple wrapper offsets; `done/2026-07-11-t6040-usb-gadget-plan.md`). Host
@@ -121,4 +140,33 @@ console; `rootwait` plus the init's own 30 s wait covers USB enumeration.)
    external rootfs is populated — do not invest in the rootfs on the assumption
    host works. This is the next rig experiment to propose (needs the lease + CJ).
 
-No rig, no MMIO, no storage access performed.
+## Built artifacts (2026-07-21, gate 1 cleared)
+
+Kernel source commit: `96ac043df12fd3b8648505c51933b1552d033c4c`
+(`wallace/t6040-bringup`). The applied build-tree binary diff hashes to
+`e2e6e5b3e0f700a6497446da2b4679290a78a98351ed4ea0dde3a380b738b5ed`.
+The successful build used `DOCKCHANNEL=1 USB_HOST=1 NPROC=1` in isolated build
+directory `/build/linux-usb-host4`; output from a separate tree that exhibited
+transient missing dependency/object files was discarded.
+
+| Artifact | SHA-256 |
+|---|---|
+| `Image-usb-host` | `6f0daf57baf942d6e1f43d8efa2ebd4160e976c02ccfaad232dd42e918eb7482` |
+| `t6040-j614s-dcuart-usb-host.dtb` | `47b01f9e8922410365e26e21bfb2e92814ac8158585d5a6c16dd97e956731fb4` |
+| `t6040-j614s-dcuart-usb-host-left-front.dtb` | `49851557db17448a72fbc99d4274a6688bf1cd2a82a04a4f1ac1756f545212d5` |
+| `t6040-j614s-dcuart-usb-host-right.dtb` | `429440823f833273a44ab7528cf05c1e782d16f2cc21b532a2308c77e1d6f2d7` |
+| `initramfs-usb-root.cpio.gz` | `8b9b80c4eaad07aa0efa578a827f9d0766be81e9a4aed2650e748b1fc65993c8` |
+| `System.map-usb-host` | `019d7504716788f6bda8b22a6bdbef94b89a940128be4083ae3d2f1d491d9d47` |
+| `config-usb-host` | `8e11399b172035f7d88c0915ccfbf1bb277eb16097462336c4158b54d8d6bc80` |
+
+The Image's extracted embedded config is byte-identical to `config-usb-host`.
+The initramfs contains `/newroot`, its `/init` is byte-identical to
+`scripts/t6040-init-usb-root`, and all required BusyBox applets are present.
+The original decompiled DTB contains three fixed high-speed host ports and is
+now retired from live eligibility. The two 2026-07-21 one-port DTBs separately
+enable only left-front (`usb-drd1`) or right (`usb-drd2`), leaving the
+left-back DebugUSB controller, all unused USB/DART nodes, the ANS mailbox,
+SART, and internal NVMe disabled. Static verification only; the first live test
+remains review- and approval-gated.
+
+No rig, MMIO, or storage access was performed.

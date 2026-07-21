@@ -12,6 +12,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 LC_ALL=C gzip -dc "$BASE" | (cd "$TMP" && LC_ALL=C bsdtar -xf -)
 install -m 0755 "$INIT_SOURCE" "$TMP/init"
+install -d "$TMP/newroot"
 
 # Optional paired Apple trackpad firmware, produced by asahi-fwextract.
 # Example: TRACKPAD_FIRMWARE=/path/to/tpmtfw-j614s.bin ./scripts/t6040-make-initramfs.sh

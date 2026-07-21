@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: GPL-2.0+ OR MIT
+/*
+ * T6040 J614s USB2 host smoke candidate: right Type-C port only.
+ *
+ * The 2026-07-21 ADT capture maps usb-drd0/1/2 to left-back/left-front/right.
+ * DebugUSB is proven on left-back, so usb-drd0 and its DARTs deliberately stay
+ * disabled.  This variant enables only usb-drd2 for a drive on the right.
+ */
+
+#include "t6040-j614s-dcuart.dts"
+
+/ {
+	model = "Apple MacBook Pro (M4 Pro) J614s [USB2 host: right only]";
+};
+
+&usb2_dart0 { status = "okay"; };
+&usb2_dart1 { status = "okay"; };
+&usb_drd2 {
+	/delete-property/ apple,force-device-mode;
+	dr_mode = "host";
+	apple,force-host-mode;
+	status = "okay";
+};

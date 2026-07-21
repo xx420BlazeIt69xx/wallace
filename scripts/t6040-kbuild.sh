@@ -49,8 +49,30 @@ fi
 if [ -f /src/$APPLE/t6040-j614s-dcuart.dts ]; then
     cp /src/$APPLE/t6040-j614s-dcuart.dts $APPLE/
 fi
-if [ -f /src/$APPLE/t6040-j614s-dcuart-usb-host.dts ]; then
-    cp /src/$APPLE/t6040-j614s-dcuart-usb-host.dts $APPLE/
+if [ "${USB_HOST:-0}" = "1" ]; then
+    case "${USB_HOST_PORT:-all}" in
+        all)
+            USB_HOST_DTS=t6040-j614s-dcuart-usb-host.dts
+            ;;
+        left-front)
+            USB_HOST_DTS=t6040-j614s-dcuart-usb-host-left-front.dts
+            ;;
+        right)
+            USB_HOST_DTS=t6040-j614s-dcuart-usb-host-right.dts
+            ;;
+        *)
+            echo "ERROR: USB_HOST_PORT must be all, left-front, or right"
+            exit 1
+            ;;
+    esac
+    if [ -f "/out/$USB_HOST_DTS" ]; then
+        cp "/out/$USB_HOST_DTS" "$APPLE/"
+    elif [ -f "/src/$APPLE/$USB_HOST_DTS" ]; then
+        cp "/src/$APPLE/$USB_HOST_DTS" "$APPLE/"
+    else
+        echo "ERROR: USB_HOST=1 USB_HOST_PORT=${USB_HOST_PORT:-all} requires /out/$USB_HOST_DTS"
+        exit 1
+    fi
 fi
 if [ "${DOCKCHANNEL_IRQ_TEST:-0}" = "1" ]; then
     [ "${DOCKCHANNEL:-0}" = "1" ] || {
@@ -774,7 +796,8 @@ if [ "${PCIE:-0}" = "1" ]; then
 fi
 grep -qE "CONFIG_ARM64_SME=y" .config && echo "WARN: SME still enabled!" || echo "SME disabled OK"
 
-NPROC=$(nproc)
+NPROC="${NPROC:-$(nproc)}"
+echo "== build parallelism: $NPROC job(s) =="
 echo "== build DTB first (validates our DT in the real kbuild) =="
 make ARCH=arm64 -j"$NPROC" apple/t6040-j614s.dtb
 cp $APPLE/t6040-j614s.dtb /out/ && echo "DTB -> /out/t6040-j614s.dtb"
@@ -807,9 +830,10 @@ if [ "${PCIE:-0}" = "1" ]; then
         && echo "DTB -> /out/t6040-j614s-dcuart-pcie.dtb"
 fi
 if [ "${USB_HOST:-0}" = "1" ]; then
-    make ARCH=arm64 -j"$NPROC" apple/t6040-j614s-dcuart-usb-host.dtb
-    cp $APPLE/t6040-j614s-dcuart-usb-host.dtb /out/ \
-        && echo "DTB -> /out/t6040-j614s-dcuart-usb-host.dtb"
+    USB_HOST_DTB="${USB_HOST_DTS%.dts}.dtb"
+    make ARCH=arm64 -j"$NPROC" "apple/$USB_HOST_DTB"
+    cp "$APPLE/$USB_HOST_DTB" /out/ \
+        && echo "DTB -> /out/$USB_HOST_DTB"
 fi
 
 if [ "${1:-}" = "image" ]; then
@@ -915,5 +939,9 @@ if [ "${1:-}" = "image" ]; then
     # System.map lets t6040-ramdump.py locate __log_buf for a post-mortem console
     # dump when the framebuffer stays blank (hang before simpledrm probes).
     cp System.map "/out/$map_name" && echo "System.map -> /out/$map_name"
+    if [ "${USB_HOST:-0}" = "1" ]; then
+        cp .config /out/config-usb-host \
+            && echo "config -> /out/config-usb-host"
+    fi
 fi
 echo "== done =="

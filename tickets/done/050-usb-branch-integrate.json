@@ -2,7 +2,7 @@
   "seq": "050",
   "slug": "usb-branch-integrate",
   "needs": "offline",
-  "state": "open",
+  "state": "done",
   "track": "storage",
   "priority": "P1",
   "desc": "The new damsleth/linux wallace/t6040-bringup branch integrates the former t6040-usb-wip stack with the T6040 DT/PMGR line on AsahiLinux asahi-wip. The standard DockChannel harness now applies the refreshed PMGR/SART/binding patches and builds all available DTBs. Remaining acceptance: run the USB_HOST=1 image build with dts/t6040-j614s-dcuart-usb-host.dts and preserve the resulting external-root artifacts for ticket 032.",
@@ -11,5 +11,6 @@
     "032"
   ],
   "hashes": null,
-  "created": 1784047547
+  "created": 1784047547,
+  "done_at": 1784625434
 }

@@ -52,12 +52,24 @@ usb_report() {
     $BB dmesg | $BB grep -Ei 'dwc3|xhci|dart|usb-storage|uas|scsi|usb [0-9]' | $BB tail -40
     echo "--- USB devices (/sys/bus/usb) ---"
     for d in /sys/bus/usb/devices/*/product; do
-        [ -r "$d" ] && echo "  $($BB cat "$d") [$($BB dirname "$d" | $BB xargs basename)]"
+        if [ -r "$d" ]; then
+            devdir=${d%/product}
+            echo "  $($BB cat "$d") [${devdir##*/}]"
+        fi
     done 2>/dev/null
     echo "--- block devices ---"
     $BB cat /proc/partitions
-    echo "--- blkid ---"
-    $BB blkid 2>/dev/null
+}
+
+# Keep the framebuffer copy and also send the complete report over the proven
+# DockChannel path.  Repeat after 10 seconds so the smoke pass criterion (the
+# same sd* device remains present) is directly observable without shell input.
+emit_usb_report() {
+    if [ -c /dev/ttydc0 ]; then
+        usb_report | $BB tee /dev/ttydc0
+    else
+        usb_report
+    fi
 }
 
 dc_console
@@ -90,12 +102,28 @@ if [ -n "$ROOTSPEC" ]; then
     done
     if [ -n "$dev" ] && [ -b "$dev" ]; then
         log "found root at $dev after ${n}s; mounting"
-        if $BB mount -t "$ROOTFSTYPE" "$dev" /newroot 2>/dev/null && [ -x /newroot/sbin/init -o -x /newroot/init ]; then
+        $BB mkdir -p /newroot
+        if $BB mount -t "$ROOTFSTYPE" "$dev" /newroot 2>/dev/null; then
+            NEWINIT=""
+            [ -x /newroot/sbin/init ] && NEWINIT=/sbin/init
+            [ -z "$NEWINIT" ] && [ -x /newroot/init ] && NEWINIT=/init
+        else
+            NEWINIT=""
+        fi
+        if [ -n "$NEWINIT" ]; then
+            # Carry the live kernel filesystems into the distro root.  This is
+            # required by systemd-based roots and keeps the DockChannel tty and
+            # watchdog device available across switch_root.
+            $BB mkdir -p /newroot/dev /newroot/proc /newroot/sys
+            $BB mount --move /dev /newroot/dev
+            $BB mount --move /proc /newroot/proc
+            $BB mount --move /sys /newroot/sys
             log "switch_root -> $dev"
-            exec $BB switch_root /newroot /sbin/init
+            exec $BB switch_root /newroot "$NEWINIT"
             log "ERROR: switch_root failed"
         else
             log "ERROR: mount/init check failed for $dev — NOT touching any other device"
+            $BB umount /newroot 2>/dev/null || true
         fi
     else
         log "ERROR: root $ROOTSPEC not found after ${n}s"
@@ -104,7 +132,10 @@ else
     log "no root= on cmdline: SMOKE mode (report + shell, no pivot)"
 fi
 
-usb_report
+emit_usb_report
+log "waiting 10 seconds before the persistence report"
+$BB sleep 10
+emit_usb_report
 echo "==================================================="
 echo "  USB-root init stopped in diagnostic shell."
 echo "  (no internal device is ever mounted here)"

@@ -1,50 +1,46 @@
-# T6040 USB2-host smoke — independent cross-review (2026-07-21, claude)
+# T6040 one-port USB2-host smoke cross-review (2026-07-21)
 
-Second-agent review of Sol's pre-approval packet
-`done/2026-07-21-t6040-usb-host-smoke-preflight.md`, per COORDINATION.md §"Cross-agent
-review before approval" and the non-negotiables in `~/Code/m1n1/AGENTS.md`.
+Reviewer: `usb_smoke_cross_review` (independent agent)
 
-**Verdict: PASS — no blocking issues. Safe for the SMOKE boot as specified.**
+Verdict: **PASS for both port-specific artifact sets, conditional on selecting
+and pinning exactly one physical-drive port before CJ approval.**
 
-> Scope note (added on re-record): this review covers the **all-three-ports**
-> `t6040-j614s-dcuart-usb-host.dtb` (`47b01f9e…`) pinned in the preflight. If the
-> smoke is re-scoped to a single-port DT after ticket 057's port-map capture, the
-> kernel/initramfs findings below carry over unchanged, but the new DTB needs a
-> short delta re-check (node statuses only) before approval. This file was first
-> written earlier on 2026-07-21 and disappeared from `done/` during concurrent
-> agent activity; re-recorded verbatim with this note.
+## Verified artifacts
 
-## What was verified (against the actual artifacts, not just the write-up)
-
-| Check | Method | Result |
+| Physical drive port | DTB | SHA-256 |
 |---|---|---|
-| All 6 live inputs hash-pinned | `shasum -a 256 -c linux-build-out/t6040-usb-host-smoke.sha256` | OK (m1n1 bin, Image, dtb, initramfs, System.map, config) |
-| Internal NVMe cannot probe | decompiled the DTB (`scripts/dtc`) | `nvme@40dcc0000`, SART, and the ANS mailbox `mailbox@409608000` (phandle `0x57`, the one the nvme node references) are all `status = "disabled"` |
-| NVMe not auto-loaded | `.config` | `CONFIG_NVME_CORE`/`BLK_DEV_NVME`/`NVME_APPLE` all `=m` (modular) — belt-and-suspenders with the disabled node |
-| No stray enabled storage coprocessor | DTB | the only `okay` ASC mailbox is `mailbox@514608000` (phandle `0x5a`), a non-storage coprocessor unrelated to ANS |
-| No blind MMIO | read `patches/t6040-dwc3-apple-force-host.patch` | probe-time `dwc3_apple_init(HOST)` only; no register pokes |
-| No SPMI/PMU/NVRAM/charger writes | DTB + patch | the `spmi` hits are PMGR power-domain *labels* (`nub_spmiN`), not a writable SPMI transport; nothing new enabled |
-| No ATC PHY / unknown tunable bucket | DTB | no `atc-phy`/`atcphy` node present |
-| USB path as designed | DTB | all three `usb@…` = `dr_mode="host"` + `apple,force-host-mode`; `force-device-mode` fully removed (0 occurrences); six `iommu@…` USB DARTs (`dart,t8110`) all `okay` |
-| initramfs is truly read-only in SMOKE | read `scripts/t6040-init-usb-root` | SMOKE branch (no `root=`) mounts only proc/sysfs/devtmpfs, reads `/proc/partitions` + `blkid`, then `exec sh`; never `mount`s a block device |
-| Remote visibility | init | reports and an interactive shell run directly over `/dev/ttydc0` (`exec 9<>/dev/ttydc0`), so the run is readable regardless of the kernel's `console=tty0` |
-| m1n1 is live-proven | preflight hash | pinned to the zero-PCIe-write upper-guard control from `eed11760`, not a fresh `main` build |
-| SMP topology risk contained | preflight + cmdline | `maxcpus=1` prevents starting the unaudited/nonexistent `cpu@10105` (topology reconcile is ticket 034, correctly kept separate) |
+| left-front | `t6040-j614s-dcuart-usb-host-left-front.dtb` | `49851557db17448a72fbc99d4274a6688bf1cd2a82a04a4f1ac1756f545212d5` |
+| right | `t6040-j614s-dcuart-usb-host-right.dtb` | `429440823f833273a44ab7528cf05c1e782d16f2cc21b532a2308c77e1d6f2d7` |
 
-## Notes for the run (non-blocking)
+Both port-specific six-file manifests pass. The kernel, m1n1, initramfs,
+System.map, and config hashes match the preflight. The old generic all-port
+manifest and DTB are not eligible for a live boot.
 
-- Physical-port mapping is unknown, so all three ports are forced host; whichever
-  carries the disk enumerates. VBUS is not manipulated — prefer a self-powered
-  enclosure / powered hub for the connected drive. (Ticket 057's ADT port-map
-  capture now precedes this and may reduce the DT to one port.)
-- This shares the known gadget-era risk (`done/2026-07-11-t6040-usb-gadget-plan.md`):
-  a port may enumerate once then go deaf without an `atc-phy,t6040` USB2 PHY driver.
-  The pass condition (device present ≥10 s + responsive shell) is exactly the test
-  for whether host mode survives that; a deaf port is an informative negative, not a
-  safety event.
-- Stop conditions in the preflight are complete (async SError, watchdog, DART fault,
-  DockChannel loss, repeated controller reset, any sign of NVMe probe).
+## Decompiled-DTB checks
 
-Ready for CJ approval once re-proposed with final (possibly single-port) hashes.
-Sol (`codex`) drives; this reviewer (`claude`) does not contend for the rig on
-this experiment.
+- Left-front enables only `usb-drd1` at `0x38a280000` and its DARTs at
+  `0x38af00000`/`0x38af80000`.
+- Right enables only `usb-drd2` at `0x392280000` and its DARTs at
+  `0x392f00000`/`0x392f80000`.
+- Each DTB contains exactly one enabled host controller and one
+  `apple,force-host-mode` property.
+- `usb-drd0`/left-back and all unused USB/DART groups remain disabled.
+- No ATC PHY is enabled. ANS, SART, and internal NVMe remain disabled.
+
+The independent ADT parse also confirms
+`usb-drd0/1/2 = left-back/left-front/right` and the raw-capture hash
+`7a92e6e4d16cb1b5a5858beb22b22acc8e5ed4b36ed5d5ccde9b251f1da55c84`.
+
+## Runtime-safety checks and caveats
+
+The initramfs contains no kernel modules; its smoke path mounts only proc,
+sysfs, and devtmpfs and does not mount a block device. NVMe is modular and its
+module is absent. No PMU/SPMI/charger/NVRAM path is introduced. The selected
+USB devices use their existing ADT-derived PMGR power domain, which remains
+within the CJ approval gate.
+
+Before approval, replace the preflight's `CHOSEN` placeholder with exactly the
+DTB matching the attached drive and use only its matching manifest. Keep the
+DebugUSB tether on left-back. Because there is no ATC PHY or explicit VBUS
+control, a powered hub or self-powered enclosure is preferred and enumeration
+remains experimental.

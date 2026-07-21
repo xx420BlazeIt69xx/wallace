@@ -7,6 +7,38 @@ cable; reboot via `macvdmtool`. No screen-reading or physical access needed.
 Operational details, recipes, and history: `DEVLOG.md`. Long-term: `ROADMAP.md`.
 Read the DebugUSB link rules in DEVLOG before touching the rig.
 
+## Immediate storage-path gate: map USB ports, then smoke host mode
+
+The first USB2-host kernel/DT/initramfs set now builds and passes static checks;
+hashes and exact no-root boot procedure are in
+`done/2026-07-21-t6040-usb-host-smoke-preflight.md`. Do **not** boot its current
+three-port DTB yet: an independent review identified an avoidable role risk
+because the physical DWC3 index carrying the DebugUSB/DFU tether is unknown.
+
+Rig ticket 057 is the reviewed, approved next step. It captures the existing
+ADT over KIS using RAM reads only (no Linux boot, USB init, MMIO, PMU/SPMI, or
+target-memory writes); procedure and helper hash are in
+`done/2026-07-21-t6040-usb-port-map-adt-preflight.md`. After CJ approval and
+capture, build a single-port DTB that leaves the DebugUSB port disabled, repeat
+the hash/cross-review, then propose the no-`root=` USB enumeration smoke. Only
+after that device remains present for 10 seconds should an external distro
+rootfs be populated or mounted.
+
+**Result 2026-07-21:** the initial KIS attempts failed even after a cold start
+because the tether was on the wrong physical port. Moving it to the previously
+proven top-left/rear port restored KIS. Ticket 057 then captured the ADT
+successfully and established the authoritative map: `usb-drd0 = left-back`,
+`usb-drd1 = left-front`, `usb-drd2 = right`. Keep `usb-drd0` disabled because it
+carries DebugUSB. Build/hash/cross-review only the one-port DTB matching the
+external drive, then run the no-`root=` smoke. Exact capture result:
+`done/2026-07-21-t6040-usb-port-map-adt-result.md`; failed-attempt history:
+`done/2026-07-21-t6040-usb-port-map-adt-attempt.md`.
+
+Keep the first USB smoke at `maxcpus=1 idle=nop`. The DT's extra `cpu@10105` is
+correctly disabled and 14 cores are available, but Linux secondary-core bring-up
+is still a separate staged experiment (tickets 005/034); do not combine it with
+the first USB-host test.
+
 ## 0. Attribute DockChannel-UART RX BIT(1) without relying on RX
 
 The storm-bounded UART TX/RX BIT(2)/BIT(1) diagnostic ran once on 2026-07-14.
@@ -81,7 +113,15 @@ Keep the standard 5 ms full-poll mode everywhere except the separate
 diagnostic DTs. Do not retry any completed BIT(1) image, and do not publish
 the old scan as a hardware erratum — AIC delivery has still never been
 exercised (no byte has reached the FIFO in an IRQ-mode build under test
-conditions). Next step is offline ticket 049.
+conditions).
+
+Ticket 049 is done (`done/2026-07-14-t6040-dockchannel-rx-path-delta.md`): the
+static delta audit rules out direct software flow-control coupling and shows RX
+setup itself did not change between the builds. Next step is ticket 059
+(`dockchannel-timing-image`): the timing-only silent-window discriminator —
+same kernel and DT, new initramfs only, no new MMIO. TX priming (step 2 of the
+ladder) is a separate gated experiment only if 059's run still shows zero
+ingress; do not combine the two.
 
 ## 0.1 Extend the proven T6040 PCIe path through PHY setup
 

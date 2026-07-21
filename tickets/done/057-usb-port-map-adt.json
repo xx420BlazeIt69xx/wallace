@@ -1,0 +1,18 @@
+{
+  "seq": "057",
+  "slug": "usb-port-map-adt",
+  "needs": "rig",
+  "state": "done",
+  "track": "storage",
+  "priority": "P1",
+  "desc": "ADT-only USB physical-port mapping capture; no Linux boot, USB init, MMIO, PMU/SPMI/NVRAM, or target-memory write. Exact procedure: done/2026-07-21-t6040-usb-port-map-adt-preflight.md. KIS-only helper b6e7423626eb141b6631a4c126259d7cb50a2907954c575c1622d7bdc016e4f6 independently reviewed PASS by usb_smoke_cross_review; full raw ADT preserved with SHA before single-port DT build. Stop after capture + healthy proxy recovery.",
+  "author": "codex",
+  "deps": [
+    "031"
+  ],
+  "hashes": null,
+  "created": 1784626153,
+  "approved_by": "cj",
+  "approved_at": 1784634179,
+  "done_at": 1784635334
+}
