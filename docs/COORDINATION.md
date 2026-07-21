@@ -67,6 +67,12 @@ speed comes from. `needs: rig` (state `proposed`→`approved`→`done`) — need
 lease and CJ's batch approval. Tickets live in git (`tickets/`); the strategy/
 priorities/graves map is `BACKLOG.md`.
 
+**Concurrent-add race:** `queue add` allocates the next sequence number
+non-atomically — two agents adding at the same time can silently clobber one
+another (observed 2026-07-21: an add reported `[057]` and was later overwritten
+by the other agent's 057). After every `queue add`, re-check
+`queue show <seq>` actually contains *your* slug; if not, re-add.
+
 To actually drive the rig, hold the lease and export your name so the guard
 sees it:
 
